@@ -182,3 +182,45 @@ h1,h2,h3,.title,.amount,.time-block,.brick,.day-btn b{font-family:"Klee One","Ze
 .fx-direction-row{display:grid;grid-template-columns:1fr 58px;gap:10px;align-items:center;margin-bottom:12px}.fx-swap{font-size:24px;padding:8px}.fx-converter{display:grid;grid-template-columns:1fr 32px 1fr;gap:8px;align-items:end}.fx-converter label{margin-top:0}.fx-arrow{text-align:center;font-size:25px;font-weight:900;padding-bottom:14px}.fx-output{min-height:54px;border:3px solid var(--ink);border-radius:8px;box-shadow:4px 4px 0 var(--ink);padding:12px;font-size:18px;font-weight:900;color:#9d6572;overflow-wrap:anywhere}
 .suggestions button{font-family:"Zen Maru Gothic","Noto Sans TC",sans-serif}
 @media(max-width:360px){.fx-converter{grid-template-columns:1fr}.fx-arrow{transform:rotate(90deg);padding:0}.fx-direction-row{grid-template-columns:1fr 52px}}
+
+
+/* v1.2：粗體手寫、主題立即生效、地圖選點 */
+@import url('https://fonts.googleapis.com/css2?family=Klee+One:wght@600&display=swap');
+:root{--outline:var(--ink)}
+*,html,body,button,input,textarea,select,h1,h2,h3,h4,.title,.amount,.time-block,.brick,.day-btn,.small,label,.tag,.eyebrow,.foreign,.chip{
+  font-family:"Klee One","DFKai-SB","BiauKai","STKaiti","Kaiti TC",cursive!important;
+  font-weight:700!important;
+}
+body{
+  color:var(--ink)!important;background:var(--bg1)!important;
+  background-image:repeating-linear-gradient(0deg,var(--bg2) 0,var(--bg2) 31px,var(--bg1) 32px)!important;
+}
+.app{background:var(--bg2)!important;border-color:var(--ink)!important}
+.hero{background:var(--pink)!important;color:var(--card)!important;border-color:var(--ink)!important;box-shadow:0 7px 0 var(--ink)!important}
+.card,.phrase-card,.modal,.wizard-card,.input,.fx-output{background:var(--card)!important;color:var(--ink)!important;border-color:var(--ink)!important}
+.summary-card{background:var(--pink)!important;color:var(--card)!important;border-color:var(--ink)!important}
+.summary-card .small{color:var(--card)!important}
+.day-btn{background:var(--card)!important;color:var(--ink)!important;border-color:var(--ink)!important}
+.day-btn.active{background:var(--p)!important;color:var(--card)!important}
+.brick{color:var(--ink)!important;border-color:var(--ink)!important}
+.brick.primary{background:var(--p)!important;color:var(--card)!important}
+.brick.yellow{background:var(--yellow)!important}
+.brick.pink{background:var(--pink)!important;color:var(--card)!important}
+.brick.mint{background:var(--p2)!important}
+.brick.dark{background:var(--ink)!important;color:var(--card)!important}
+.brick.white{background:var(--card)!important}
+.time-block{background:var(--p2)!important;color:var(--ink)!important;border-color:var(--ink)!important}
+.address,.transport-box,.notice,.leg-info,.translation-result,.weather-pill,.chip{background:var(--bg1)!important;color:var(--ink)!important;border-color:var(--ink)!important}
+.bottom-nav{background:var(--card)!important;border-color:var(--ink)!important}
+.bottom-nav button.active{color:var(--pink)!important}
+.theme-option{background:var(--swatch)!important;color:var(--card)!important;border-color:var(--ink)!important;min-height:64px;position:relative}
+.theme-option.active{outline:4px solid var(--yellow)!important;outline-offset:2px}
+.theme-dots{display:flex;gap:5px;margin-bottom:7px}
+.theme-dots i{width:17px;height:17px;border-radius:50%;border:2px solid var(--ink);background:var(--swatch2)}
+.theme-dots i:first-child{background:var(--card)}
+.place-tools{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:9px}
+.inline-picker{margin-top:10px;padding:9px;border:3px solid var(--ink);border-radius:9px;background:var(--card);box-shadow:4px 4px 0 var(--ink)}
+.inline-picker-map{height:300px;border:2px solid var(--ink);border-radius:7px;margin-bottom:8px}
+.suggestions{border-color:var(--ink)!important;background:var(--card)!important}
+.suggestions button{background:var(--card)!important;color:var(--ink)!important}
+@media(max-width:360px){.place-tools{grid-template-columns:1fr}}

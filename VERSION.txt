@@ -1,3 +1,12 @@
 Travel Planner Ultimate
-Version: 1.1.0 Stable
-Fixes: local dates, multi-source places, bidirectional FX, vintage solid-color UI
+Version: 1.2.0
+Busan station catalog: 158 stations
+Fixes:
+- KE2086: TPE Terminal 1 -> PUS International Terminal
+- Existing KE2086 records auto-corrected
+- Busan Metro Lines 1-4, Busan-Gimhae Light Rail, Donghae Line
+- Chinese/Korean/English station search
+- Korean translated POI search
+- Inline map pin picker
+- Working theme palettes
+- Unified bold handwriting font
