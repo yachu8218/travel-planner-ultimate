@@ -1,5 +1,6 @@
 
 const STORAGE_KEY='travelPlannerUltimateV1';
+const PORTFOLIO_KEY='travelPlannerUltimatePortfolioV15';
 const themes={
  cream:{name:'奶油老書店',v:['#9a8f78','#c7b99a','#d4b36f','#b77f7d','#eee5d3','#f8f1e4','#453f36','#fffaf0']},
  rose:{name:'乾燥玫瑰',v:['#a96f75','#c49a97','#d1b177','#8e6f78','#ead9d7','#f7ece4','#493c40','#fff8f3']},
@@ -63,8 +64,10 @@ const flightPresets={
  'KE2086':{airline:'大韓航空',from:'桃園國際機場 第一航廈（TPE）',to:'金海國際機場 國際線航廈（PUS）',depart:'12:00',arrive:'15:30',fromGeo:{name:'桃園國際機場 第一航廈',address:'台灣桃園市大園區航站南路17之1號',lat:25.08167,lon:121.23791},toGeo:{name:'金海國際機場 國際線航廈',address:'대한민국 부산광역시 강서구 공항진입로 108 국제선청사',lat:35.17953,lon:128.93822}},
  'LJ751':{airline:'真航空',from:'金海國際機場（PUS）',to:'桃園國際機場 第一航廈（TPE）',depart:'22:00',arrive:'23:40',fromGeo:{name:'金海國際機場',address:'대한민국 부산광역시 강서구 공항진입로 108',lat:35.17953,lon:128.93822},toGeo:{name:'桃園國際機場 第一航廈',address:'台灣桃園市大園區航站南路17之1號',lat:25.08167,lon:121.23791}}
 };
-let state=loadState();
-let isShareMode=false,activePhraseCat='全部',map,mapMarkers=[],userMarker,fxRate=0,fxDirection='localToTwd',suggestTimer=null,suggestionCache={},pickerMaps={},pickerMarkers={},pickerSelections={};
+let portfolio=loadPortfolio();
+let state=portfolio.trips.find(t=>t.tripId===portfolio.activeTripId)||portfolio.trips[0]||defaultState();
+portfolio.activeTripId=state.tripId;
+let isShareMode=false,activePhraseCat='全部',map,mapMarkers=[],userMarker,fxRate=0,fxDirection='localToTwd',suggestTimer=null,suggestionCache={},pickerMaps={},pickerMarkers={},pickerSelections={},wizardCreateMode=false;
 
 function defaultState(){
  return {
@@ -74,8 +77,38 @@ function defaultState(){
   rateCache:{},translations:{},sharePrefs:{hideMoney:true,hidePrivate:true}
  }
 }
-function loadState(){try{return Object.assign(defaultState(),JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}'))}catch{return defaultState()}}
-function saveState(){if(!isShareMode)localStorage.setItem(STORAGE_KEY,JSON.stringify(state))}
+function normalizeTripObject(raw){
+ let base=defaultState(),trip=Object.assign(base,raw||{});
+ trip.tripId=trip.tripId||uid();
+ trip.days=Array.isArray(trip.days)?trip.days:[];
+ trip.checklist=Array.isArray(trip.checklist)?trip.checklist:base.checklist;
+ trip.people=Array.isArray(trip.people)&&trip.people.length?trip.people:base.people;
+ trip.expenses=Array.isArray(trip.expenses)?trip.expenses:[];
+ return trip;
+}
+function loadPortfolio(){
+ try{
+  let saved=JSON.parse(localStorage.getItem(PORTFOLIO_KEY)||'null');
+  if(saved&&Array.isArray(saved.trips)&&saved.trips.length){
+   saved.trips=saved.trips.map(normalizeTripObject);
+   saved.activeTripId=saved.activeTripId||saved.trips[0].tripId;
+   return saved;
+  }
+ }catch{}
+ let legacy=null;
+ try{legacy=JSON.parse(localStorage.getItem(STORAGE_KEY)||'null')}catch{}
+ let first=normalizeTripObject(legacy||{});
+ return{activeTripId:first.tripId,trips:[first]};
+}
+function savePortfolio(){
+ if(isShareMode)return;
+ let idx=portfolio.trips.findIndex(t=>t.tripId===state.tripId);
+ if(idx>=0)portfolio.trips[idx]=state;else portfolio.trips.push(state);
+ portfolio.activeTripId=state.tripId;
+ localStorage.setItem(PORTFOLIO_KEY,JSON.stringify(portfolio));
+ localStorage.setItem(STORAGE_KEY,JSON.stringify(state));
+}
+function saveState(){savePortfolio()}
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 function toast(t){$('toast').textContent=t;$('toast').style.display='block';setTimeout(()=>$('toast').style.display='none',1800)}
@@ -133,7 +166,66 @@ function renderAll(){
  renderHome();renderChecklist();renderPlan();renderMoney();renderPhrases();renderQuantityTable();renderThemes();renderSettings();
  saveState()
 }
+
+function tripStatusLabel(trip){
+ if(!trip.start||!trip.end)return '尚未設定日期';
+ let today=localDateString(new Date());
+ if(today<trip.start)return `距離出發 ${Math.ceil((new Date(trip.start+'T12:00:00')-new Date(today+'T12:00:00'))/86400000)} 天`;
+ if(today>trip.end)return '旅程已結束';
+ return '旅行進行中';
+}
+function renderTripPortfolio(){
+ let box=$('tripPortfolio');if(!box)return;
+ if(isShareMode){
+  box.innerHTML=`<div class="card lego"><div class="small">親友唯讀行程</div><h3>${esc(state.tripName)}</h3><div>${esc(state.destination)}・${esc(state.start)} ～ ${esc(state.end)}</div></div>`;
+  return;
+ }
+ box.innerHTML=portfolio.trips.map(trip=>{
+  let active=trip.tripId===state.tripId;
+  return `<article class="trip-library-card ${active?'active':''}">
+   <button class="trip-library-main" onclick="switchTrip('${trip.tripId}')">
+    <span class="trip-library-icon">${trip.countryCode==='JP'?'🗾':trip.countryCode==='KR'?'🧳':'✈️'}</span>
+    <span>
+     <small>${active?'目前開啟・':''}${esc(tripStatusLabel(trip))}</small>
+     <b>${esc(trip.tripName||trip.destination||'未命名旅行')}</b>
+     <em>${esc(trip.destination||'尚未設定目的地')}・${esc(trip.start||'----')} ～ ${esc(trip.end||'----')}</em>
+    </span>
+   </button>
+   <div class="trip-library-actions">
+    <button class="brick white" onclick="switchTrip('${trip.tripId}')">開啟</button>
+    <button class="brick white" onclick="editTripFromLibrary('${trip.tripId}')">編輯</button>
+    ${portfolio.trips.length>1?`<button class="brick white" onclick="deleteTrip('${trip.tripId}')">刪除</button>`:''}
+   </div>
+  </article>`;
+ }).join('')||'<div class="card">尚未建立旅行。</div>';
+}
+function switchTrip(id){
+ if(isShareMode)return;
+ savePortfolio();
+ let target=portfolio.trips.find(t=>t.tripId===id);if(!target)return;
+ state=target;portfolio.activeTripId=id;
+ map=null;mapMarkers=[];userMarker=null;fxRate=0;
+ savePortfolio();applyTheme(state.theme);renderAll();switchTab('home');fetchRate();
+ toast(`已切換至「${state.tripName||state.destination}」`);
+}
+function editTripFromLibrary(id){
+ if(id!==state.tripId)switchTrip(id);
+ openWizard(true,false);
+}
+function deleteTrip(id){
+ if(isShareMode||portfolio.trips.length<=1)return;
+ let trip=portfolio.trips.find(t=>t.tripId===id);
+ if(!confirm(`確定刪除「${trip?.tripName||'這個旅行'}」？此動作無法復原。`))return;
+ portfolio.trips=portfolio.trips.filter(t=>t.tripId!==id);
+ if(state.tripId===id){
+  state=portfolio.trips[0];portfolio.activeTripId=state.tripId;
+ }
+ savePortfolio();renderAll();toast('旅行已刪除');
+}
+function createNewTrip(){openWizard(false,true)}
+
 function renderHome(){
+ renderTripPortfolio();
  if(!state.setup){$('tripOverview').innerHTML='<div class="card lego"><h3>還沒有建立旅行</h3><p class="small">先填寫目的地與日期，系統就會建立行程分頁。</p><button class="brick primary full owner-only" onclick="openWizard()">開始建立</button></div>';return}
  $('tripOverview').innerHTML=`<div class="summary-card"><div class="small" style="color:#fff">目前旅程</div><div class="amount">${esc(state.tripName)}</div><b>📍 ${esc(state.destination)}</b><div>${esc(state.start)} ～ ${esc(state.end)}</div><div style="margin-top:6px">💱 ${state.currency}　🗣️ ${state.langName}</div></div>`;
  let diff=Math.ceil((new Date(state.start+'T00:00:00')-new Date())/86400000);
@@ -460,19 +552,117 @@ function renderThemes(){
  </button>`).join('');
 }
 function renderSettings(){refreshProviderStatus();$('settingsSummary').innerHTML=`旅行：${esc(state.tripName)}<br>目的地：${esc(state.destination)}<br>日期：${esc(state.start)} ～ ${esc(state.end)}<br>當地幣別：${state.currency}<br>當地語言：${state.langName}（${state.locale}）`;$('languageBadge').textContent=`${state.langName}・${state.currency}`;updateTranslatePlaceholder()}
-function openWizard(edit=false){$('wizard').classList.add('show');$('wizardDestination').value=state.destination;$('wizardStart').value=state.start;$('wizardEnd').value=state.end;$('wizardName').value=state.tripName}
-async function finishWizard(){let dest=$('wizardDestination').value.trim(),start=$('wizardStart').value,end=$('wizardEnd').value,name=$('wizardName').value.trim();if(!dest||!start||!end||end<start)return $('wizardStatus').textContent='請輸入完整目的地與正確日期。';$('wizardStatus').textContent='正在偵測國家、語言與幣別…';try{let rule=destinationRules.find(x=>x.re.test(dest)),g=await geocode(dest);if(!g)throw 0;Object.assign(state,{setup:true,tripName:name||`${dest}旅行`,destination:dest,start,end,center:[g.lat,g.lon]});if(rule)Object.assign(state,{countryCode:rule.cc,currency:rule.cur,lang:rule.lang,locale:rule.locale,langName:rule.lname});let old=new Map(state.days.map(d=>[d.date,d]));state.days=daysRange(start,end).map((date,i)=>old.get(date)||{id:uid()+i,title:`Day ${i+1}`,date,items:[]});state.selectedDay=state.days[0]?.id;$('wizard').classList.remove('show');renderAll();fetchRate();toast('旅行已建立')}catch{$('wizardStatus').textContent='找不到目的地，請輸入較完整的城市名稱。'}}
+function openWizard(edit=false,createNew=false){
+ wizardCreateMode=!!createNew;
+ $('wizard').classList.add('show');
+ let source=createNew?defaultState():state;
+ $('wizardDestination').value=source.destination||'';
+ $('wizardStart').value=source.start||'';
+ $('wizardEnd').value=source.end||'';
+ $('wizardName').value=source.tripName||'';
+ $('wizardStatus').textContent=createNew?'建立一個新的獨立旅行。':'';
+}
+async function finishWizard(){
+ let dest=$('wizardDestination').value.trim(),start=$('wizardStart').value,end=$('wizardEnd').value,name=$('wizardName').value.trim();
+ if(!dest||!start||!end||end<start)return $('wizardStatus').textContent='請輸入完整目的地與正確日期。';
+ $('wizardStatus').textContent='正在偵測國家、語言與幣別…';
+ try{
+  let rule=destinationRules.find(x=>x.re.test(dest)),g=await geocode(dest);if(!g)throw 0;
+  if(wizardCreateMode){
+   savePortfolio();
+   state=defaultState();
+   state.tripId=uid();
+   portfolio.trips.push(state);
+   portfolio.activeTripId=state.tripId;
+  }
+  Object.assign(state,{setup:true,tripName:name||`${dest}旅行`,destination:dest,start,end,center:[g.lat,g.lon]});
+  if(rule)Object.assign(state,{countryCode:rule.cc,currency:rule.cur,lang:rule.lang,locale:rule.locale,langName:rule.lname});
+  let old=new Map((state.days||[]).map(d=>[d.date,d]));
+  state.days=daysRange(start,end).map((date,i)=>old.get(date)||{id:uid()+i,title:`Day ${i+1}`,date,items:[]});
+  state.selectedDay=state.days[0]?.id;
+  wizardCreateMode=false;
+  $('wizard').classList.remove('show');
+  savePortfolio();renderAll();switchTab('home');fetchRate();
+  toast('旅行已建立');
+ }catch{$('wizardStatus').textContent='找不到目的地，請輸入較完整的城市名稱。'}
+}
 function showModal(html){$('modal').innerHTML=html;$('modalBackdrop').classList.add('show')}
 function closeModal(){$('modalBackdrop').classList.remove('show')}
 function openShareModal(){let opts=state.sharePrefs;showModal(`<h3>👨‍👩‍👧‍👦 分享給親友</h3><p class="small">產生唯讀分享連結。家人不用登入，也能查看行程。</p><label><input id="hideMoney" type="checkbox" ${opts.hideMoney?'checked':''}> 隱藏分帳與花費</label><label><input id="hidePrivate" type="checkbox" ${opts.hidePrivate?'checked':''}> 隱藏私人備註</label><div class="modal-footer"><button class="brick white" onclick="closeModal()">取消</button><button class="brick primary" onclick="createShareLink()">產生分享連結</button></div>`)}
 function compactShareData(){let copy=JSON.parse(JSON.stringify(state));if($('hideMoney')?.checked){copy.expenses=[];copy.sharePrefs.hideMoney=true}else copy.sharePrefs.hideMoney=false;if($('hidePrivate')?.checked){copy.days.forEach(d=>d.items.forEach(i=>delete i.privateNote));copy.sharePrefs.hidePrivate=true}else copy.sharePrefs.hidePrivate=false;delete copy.rateCache;delete copy.translations;return copy}
-function encodeShare(obj){let str=encodeURIComponent(JSON.stringify(obj)).replace(/%([0-9A-F]{2})/g,(_,p)=>String.fromCharCode('0x'+p));return btoa(str).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')}
-function decodeShare(v){let b=v.replace(/-/g,'+').replace(/_/g,'/');while(b.length%4)b+='=';let str=atob(b),pct=[...str].map(c=>'%'+c.charCodeAt(0).toString(16).padStart(2,'0')).join('');return JSON.parse(decodeURIComponent(pct))}
-function createShareLink(){state.sharePrefs={hideMoney:$('hideMoney').checked,hidePrivate:$('hidePrivate').checked};saveState();let url=location.origin+location.pathname+'#share='+encodeShare(compactShareData()),qr=`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(url)}`;showModal(`<h3>分享連結已建立</h3><div class="qr-wrap"><img src="${qr}" alt="分享 QR Code"></div><input id="shareUrl" class="input space-top" value="${esc(url)}" readonly><div class="grid2 space-top"><button class="brick primary" onclick="shareNative()">分享到 LINE</button><button class="brick white" onclick="copyShareUrl()">複製連結</button></div><p class="small">任何拿到連結的人都能查看分享內容，請不要放入護照號碼等敏感資料。</p>`)}
-async function shareNative(){let url=$('shareUrl').value;try{if(navigator.share)await navigator.share({title:state.tripName,text:`${state.tripName} 行程`,url});else{await navigator.clipboard.writeText(url);toast('連結已複製，可貼到 LINE')}}catch{}}
+function bytesToBase64Url(bytes){
+ let binary='',chunk=0x8000;
+ for(let i=0;i<bytes.length;i+=chunk)binary+=String.fromCharCode(...bytes.subarray(i,i+chunk));
+ return btoa(binary).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+function base64UrlToBytes(v){
+ let b=v.replace(/-/g,'+').replace(/_/g,'/');while(b.length%4)b+='=';
+ let binary=atob(b),bytes=new Uint8Array(binary.length);
+ for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);
+ return bytes;
+}
+function encodeShareLegacy(obj){
+ let str=encodeURIComponent(JSON.stringify(obj)).replace(/%([0-9A-F]{2})/g,(_,p)=>String.fromCharCode('0x'+p));
+ return btoa(str).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+function decodeShareLegacy(v){
+ let b=v.replace(/-/g,'+').replace(/_/g,'/');while(b.length%4)b+='=';
+ let str=atob(b),pct=[...str].map(c=>'%'+c.charCodeAt(0).toString(16).padStart(2,'0')).join('');
+ return JSON.parse(decodeURIComponent(pct));
+}
+async function encodeShareData(obj){
+ let json=JSON.stringify(obj);
+ if('CompressionStream' in window){
+  let stream=new Blob([json]).stream().pipeThrough(new CompressionStream('gzip'));
+  let bytes=new Uint8Array(await new Response(stream).arrayBuffer());
+  return'g.'+bytesToBase64Url(bytes);
+ }
+ return'j.'+encodeShareLegacy(obj);
+}
+async function decodeShareData(v){
+ if(v.startsWith('g.')&&'DecompressionStream' in window){
+  let bytes=base64UrlToBytes(v.slice(2));
+  let stream=new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
+  return JSON.parse(await new Response(stream).text());
+ }
+ if(v.startsWith('j.'))return decodeShareLegacy(v.slice(2));
+ return decodeShareLegacy(v);
+}
+async function createShareLink(){
+ state.sharePrefs={hideMoney:$('hideMoney').checked,hidePrivate:$('hidePrivate').checked};
+ saveState();
+ toast('正在建立專屬分享連結…');
+ let payload=await encodeShareData(compactShareData());
+ let url=new URL(location.origin+location.pathname);
+ url.searchParams.set('share',payload);
+ let shareUrl=url.toString(),qr=`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(shareUrl)}`;
+ showModal(`<h3>「${esc(state.tripName)}」分享連結</h3><div class="qr-wrap"><img src="${qr}" alt="分享 QR Code"></div><input id="shareUrl" class="input space-top" value="${esc(shareUrl)}" readonly><div class="grid2 space-top"><button class="brick primary" onclick="shareNative()">分享到 LINE</button><button class="brick white" onclick="copyShareUrl()">複製連結</button></div><p class="small">親友打開後會直接進入這一份唯讀行程，不會建立空白旅行。</p>`);
+}
+async function shareNative(){
+ let url=$('shareUrl').value;
+ try{
+  if(navigator.share)await navigator.share({title:state.tripName,text:`查看「${state.tripName}」唯讀行程`,url});
+  else{await navigator.clipboard.writeText(url);toast('連結已複製，可貼到 LINE')}
+ }catch{}
+}
 async function copyShareUrl(){await navigator.clipboard.writeText($('shareUrl').value);toast('分享連結已複製')}
-function loadShareMode(){let m=location.hash.match(/^#share=(.+)$/);if(!m)return false;try{state=decodeShare(m[1]);isShareMode=true;return true}catch{return false}}
-function exitShareMode(){location.hash='';location.reload()}
+async function loadShareMode(){
+ let params=new URLSearchParams(location.search),value=params.get('share');
+ if(!value){
+  let m=location.hash.match(/^#share=(.+)$/);value=m?.[1]||'';
+ }
+ if(!value)return false;
+ try{
+  state=normalizeTripObject(await decodeShareData(value));
+  isShareMode=true;
+  portfolio={activeTripId:state.tripId,trips:[state]};
+  return true;
+ }catch(err){
+  console.error('Share link decode failed',err);
+  return false;
+ }
+}
+function exitShareMode(){location.href=location.origin+location.pathname}
 
 function formatPdfDate(date){
  try{return new Intl.DateTimeFormat('zh-TW',{year:'numeric',month:'long',day:'numeric',weekday:'short'}).format(new Date(date+'T12:00:00'))}
@@ -561,11 +751,16 @@ function exportItineraryPDF(){
  toast('PDF 預覽已開啟');
 }
 
-function exportBackup(){let blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`${state.tripName||'travel'}-backup.json`;a.click();URL.revokeObjectURL(a.href)}
+function exportBackup(){
+ savePortfolio();
+ let blob=new Blob([JSON.stringify({version:15,portfolio},null,2)],{type:'application/json'}),a=document.createElement('a');
+ a.href=URL.createObjectURL(blob);a.download='travel-planner-all-trips-backup.json';a.click();URL.revokeObjectURL(a.href)
+}
 function importBackup(e){let f=e.target.files?.[0];if(!f)return;let r=new FileReader();r.onload=()=>{try{state=Object.assign(defaultState(),JSON.parse(r.result));renderAll();toast('備份已匯入')}catch{toast('備份檔格式錯誤')}};r.readAsText(f)}
-function init(){
- loadShareMode();normalizeTripDates();applyTheme(state.theme);renderAll();
- if(!state.setup&&!isShareMode)openWizard();
+async function init(){
+ await loadShareMode();
+ normalizeTripDates();applyTheme(state.theme);renderAll();
+ if(!state.setup&&!isShareMode)openWizard(false,true);
  if(state.setup){fetchRate();scheduleFxAutoUpdate();refreshProviderStatus()}
 }
 init();

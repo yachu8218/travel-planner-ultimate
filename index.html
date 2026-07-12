@@ -20,7 +20,7 @@
 <div id="app" class="app">
   <header class="hero">
     <div class="hero-studs"><i></i><i></i><i></i><i></i><i></i></div>
-    <div class="eyebrow">TRAVEL PLANNER ULTIMATE · v1.4</div>
+    <div class="eyebrow">TRAVEL PLANNER ULTIMATE · v1.5</div>
     <h1 id="heroTitle">旅行手帳</h1>
     <p id="heroSub">把旅程收進一本溫柔、好用的旅行手帳。</p>
     <div class="release-badge">STABLE 1.1</div><div class="hero-character">🧳</div>
@@ -37,8 +37,13 @@
   <main class="main">
     <section id="home" class="screen active">
       <div class="section-head">
-        <div><span class="tag">MY TRIP</span><h2>旅行首頁</h2></div>
-        <button class="brick primary owner-only" onclick="openWizard(true)">⚙️ 設定</button>
+        <div><span class="tag">MY TRIPS</span><h2>我的旅行</h2></div>
+        <button class="brick primary owner-only" onclick="createNewTrip()">＋ 新增旅行</button>
+      </div>
+      <div id="tripPortfolio" class="trip-library"></div>
+      <div class="section-head active-trip-head">
+        <div><span class="tag">ACTIVE TRIP</span><h2>目前行程</h2></div>
+        <button class="brick white owner-only" onclick="openWizard(true,false)">⚙️ 編輯</button>
       </div>
       <div id="tripOverview"></div>
       <div class="grid2 owner-only">

@@ -1,5 +1,9 @@
 Travel Planner Ultimate
-Version: 1.4.0
+Version: 1.5.0
 Changes:
-- PDF preview uses Blob URL instead of about:blank/document.write
-- Added Summer Sunshine theme
+- Multiple independent trips stored on one device
+- Home trip library: create, switch, edit and delete trips
+- Existing single trip automatically migrated into the trip library
+- Share links use compressed query payloads
+- Shared links open the exact selected trip in read-only mode
+- Backup now includes all trips

@@ -268,3 +268,35 @@ html[data-theme="summer"] .day-btn.active{background:#8fd3c7!important;color:#34
 html[data-theme="summer"] .brick.primary{background:#5faeb8!important}
 html[data-theme="summer"] .brick.yellow{background:#f3cf67!important}
 html[data-theme="summer"] .brick.mint{background:#8fd3c7!important}
+
+
+/* =========================================================
+   v1.5：多旅行首頁
+   ========================================================= */
+.trip-library{display:grid;gap:14px;margin-bottom:22px}
+.trip-library-card{
+  border:3px solid var(--ink);background:var(--card);
+  box-shadow:6px 6px 0 var(--ink);border-radius:10px;overflow:hidden
+}
+.trip-library-card.active{outline:4px solid var(--yellow);outline-offset:3px}
+.trip-library-main{
+  width:100%;display:grid;grid-template-columns:62px 1fr;gap:12px;
+  align-items:center;text-align:left;padding:16px;border:0;background:var(--card);color:var(--ink)
+}
+.trip-library-icon{
+  width:58px;height:58px;display:grid;place-items:center;font-size:30px;
+  border:3px solid var(--ink);border-radius:10px;background:var(--bg1)
+}
+.trip-library-main span:last-child{display:grid;gap:3px}
+.trip-library-main small{color:var(--pink)}
+.trip-library-main b{font-size:22px;line-height:1.25}
+.trip-library-main em{font-style:normal;font-size:14px;opacity:.78}
+.trip-library-actions{
+  display:flex;gap:8px;flex-wrap:wrap;padding:10px 14px 14px;
+  border-top:2px dashed var(--p)
+}
+.trip-library-actions .brick{padding:8px 12px;box-shadow:3px 3px 0 var(--ink)}
+.active-trip-head{margin-top:20px}
+@media(min-width:720px){
+ .trip-library{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
