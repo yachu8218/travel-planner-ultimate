@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#55c7b9">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="旅行手帳">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="apple-touch-icon" href="./icon-192.png">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="./styles.css?v=1.0.0">
+  <title>旅行手帳 Travel Planner Ultimate</title>
+</head>
+<body>
+<div id="app" class="app">
+  <header class="hero">
+    <div class="hero-studs"><i></i><i></i><i></i><i></i><i></i></div>
+    <div class="eyebrow">TRAVEL PLANNER ULTIMATE · v1.0</div>
+    <h1 id="heroTitle">旅行手帳</h1>
+    <p id="heroSub">把旅程收進一本溫柔、好用的旅行手帳。</p>
+    <div class="release-badge">STABLE 1.0</div><div class="hero-character">🧳</div>
+  </header>
+
+  <div id="shareBanner" class="share-banner hidden">
+    <div>
+      <b>👀 親友查看模式</b>
+      <div class="small">這是唯讀行程，無法修改內容。</div>
+    </div>
+    <button class="brick white" onclick="exitShareMode()">回到我的行程</button>
+  </div>
+
+  <main class="main">
+    <section id="home" class="screen active">
+      <div class="section-head">
+        <div><span class="tag">MY TRIP</span><h2>旅行首頁</h2></div>
+        <button class="brick primary owner-only" onclick="openWizard(true)">⚙️ 設定</button>
+      </div>
+      <div id="tripOverview"></div>
+      <div class="grid2 owner-only">
+        <button class="brick yellow tall" onclick="openShareModal()">👨‍👩‍👧‍👦<span>分享給親友</span></button>
+        <button class="brick pink tall" onclick="switchTab('plan')">🗓️<span>編輯行程</span></button>
+      </div>
+      <div id="countdownCard" class="card lego"></div>
+      <div id="todayPreview"></div>
+    </section>
+
+    <section id="checklist" class="screen">
+      <div class="section-head">
+        <div><span class="tag">PACKING BRICKS</span><h2>準備清單</h2></div>
+        <button class="brick primary owner-only" onclick="addChecklist()">＋ 項目</button>
+      </div>
+      <div id="checklistContent"></div>
+    </section>
+
+    <section id="plan" class="screen">
+      <div class="section-head">
+        <div><span class="tag">DAILY PLAN</span><h2>每日行程</h2></div>
+        <button class="brick primary owner-only" onclick="openDayEditor()">＋ 天數</button>
+      </div>
+      <div id="dayStrip" class="day-strip"></div>
+      <div id="planContent"></div>
+    </section>
+
+    <section id="map" class="screen">
+      <div class="section-head">
+        <div><span class="tag">ROUTE MAP</span><h2>行程地圖</h2></div>
+      </div>
+      <div class="card map-card lego">
+        <div id="mapCanvas"></div>
+        <div class="map-actions">
+          <button class="brick primary" onclick="plotSelectedDay()">標記當日行程</button>
+          <button class="brick yellow" onclick="locateMe()">我的位置</button>
+        </div>
+        <div id="mapStatus" class="small">選擇日期後會顯示所有地點。</div>
+      </div>
+    </section>
+
+    <section id="money" class="screen">
+      <div class="section-head">
+        <div><span class="tag">MONEY BRICKS</span><h2>分帳與匯率</h2></div>
+      </div>
+      <div id="moneySummary" class="summary-card"></div>
+      <div class="card lego">
+        <div class="between"><h3>💱 匯率換算</h3><button class="brick white" onclick="fetchRate(true)">更新</button></div>
+        <div class="grid2">
+          <input id="fxAmount" class="input" type="number" value="10000" oninput="convertFx()">
+          <input id="fxCurrency" class="input" disabled>
+        </div>
+        <div id="fxResult" class="big-result">NT$ 0</div>
+        <div id="fxNote" class="small"></div>
+      </div>
+      <div class="card lego owner-only">
+        <div class="between"><h3>👥 旅伴</h3><button class="brick white" onclick="addPerson()">＋新增</button></div>
+        <div id="peopleChips" class="chips"></div>
+      </div>
+      <div id="expenses"></div>
+      <button class="brick dark full owner-only" onclick="openExpenseEditor()">＋ 新增消費</button>
+      <div class="card lego"><h3>✨ 建議轉帳</h3><div id="settlements"></div></div>
+    </section>
+
+    <section id="translate" class="screen">
+      <div class="section-head">
+        <div><span class="tag">LANGUAGE JOURNAL</span><h2>翻譯小幫手</h2></div>
+        <span id="languageBadge" class="chip"></span>
+      </div>
+      <div class="card lego">
+        <select id="translateDirection" class="input" onchange="updateTranslatePlaceholder()">
+          <option value="toLocal">中文 → 當地語言</option>
+          <option value="toZh">當地語言 → 中文</option>
+        </select>
+        <textarea id="translateText" class="input space-top" rows="3" placeholder="輸入要翻譯的中文"></textarea>
+        <div class="provider-row space-top">
+          <button class="brick primary" onclick="translateWithProvider('google')">Google 翻譯</button>
+          <button class="brick mint" onclick="translateWithProvider('papago')">Papago 翻譯</button>
+        </div>
+        <div class="grid2 space-top">
+          <button class="brick white" onclick="translateCustom()">一般翻譯</button>
+          <button class="brick yellow" onclick="speakCurrentTranslation()">慢速播放</button>
+        </div>
+        <div id="translationBox" class="translation-result hidden">
+          <div id="translationText" class="foreign"></div>
+          <div id="translationRoman" class="small"></div>
+          <button class="brick white space-top" onclick="copyText('translationText')">複製</button>
+        </div>
+      </div>
+      <div class="card lego">
+        <input id="phraseSearch" class="input" placeholder="搜尋常用句" oninput="renderPhrases()">
+      </div>
+      <div id="phraseCategories" class="category-strip"></div>
+      <div id="phrases"></div>
+      <div class="card journal-card quantity-card">
+        <div class="washi-tape">ORDER CHEAT SHEET</div>
+        <div class="between"><h3>🍽️ 點餐數量速查表</h3><button class="brick white" onclick="toggleQuantityTable()">展開／收起</button></div>
+        <p class="small">包含幾位、幾杯、幾份、幾個、幾瓶、幾碗與幾盤，韓國旅行可直接播放。</p>
+        <div id="quantityTable"></div>
+      </div>
+    </section>
+
+    <section id="settings" class="screen">
+      <div class="section-head"><div><span class="tag">SETTINGS</span><h2>設定</h2></div></div>
+      <div class="card lego owner-only">
+        <h3>旅行資料</h3><div id="settingsSummary" class="small"></div>
+        <button class="brick primary full space-top" onclick="openWizard(true)">重新設定旅程</button>
+      </div>
+      <div class="card lego">
+        <h3>🎨 積木配色</h3><div id="themeGrid" class="theme-grid"></div>
+      </div>
+      <div class="card journal-card owner-only">
+        <div class="washi-tape">API TOOLBOX</div>
+        <h3>✈️ 航空資料 API 中心</h3>
+        <p class="small">App 會依設定好的金鑰，自動依序嘗試可用供應商；金鑰請放在 Netlify 環境變數，不會顯示在網頁裡。</p>
+        <div id="flightProviderStatus" class="provider-status"></div>
+        <button class="brick white full space-top" onclick="refreshProviderStatus()">重新檢查 API 狀態</button>
+      </div>
+      <div class="card journal-card owner-only">
+        <div class="washi-tape">MAP & TRANSLATION</div>
+        <h3>🗺️ Google／Naver 服務狀態</h3>
+        <div id="serviceProviderStatus" class="provider-status"></div>
+      </div>
+      <div class="card journal-card owner-only">
+        <h3>資料備份</h3>
+        <div class="grid2">
+          <button class="brick white" onclick="exportBackup()">匯出備份</button>
+          <label class="brick white file-label">匯入備份<input type="file" accept=".json" onchange="importBackup(event)"></label>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <nav class="bottom-nav">
+    <button data-tab="home" class="active" onclick="switchTab('home')"><span>🏠</span>首頁</button>
+    <button data-tab="checklist" onclick="switchTab('checklist')"><span>✅</span>清單</button>
+    <button data-tab="plan" onclick="switchTab('plan')"><span>🗓️</span>行程</button>
+    <button data-tab="map" onclick="switchTab('map')"><span>🗺️</span>地圖</button>
+    <button data-tab="money" onclick="switchTab('money')"><span>💸</span>分帳</button>
+    <button data-tab="translate" onclick="switchTab('translate')"><span>💬</span>翻譯</button>
+    <button data-tab="settings" onclick="switchTab('settings')"><span>🎨</span>設定</button>
+  </nav>
+</div>
+
+<div id="modalBackdrop" class="modal-backdrop" onclick="if(event.target===this)closeModal()">
+  <div id="modal" class="modal"></div>
+</div>
+
+<div id="wizard" class="wizard-backdrop">
+  <div class="wizard-card">
+    <div class="hero-studs"><i></i><i></i><i></i><i></i></div>
+    <span class="tag">START BUILDING</span>
+    <h2>建立你的旅行手帳 ✈️</h2>
+    <p class="small">輸入目的地與日期，系統會自動設定國家、幣別、語言與地圖位置。</p>
+    <label>目的地</label>
+    <input id="wizardDestination" class="input" placeholder="例如：Busan、Tokyo、London">
+    <div class="grid2">
+      <div><label>出發日期</label><input id="wizardStart" class="input" type="date"></div>
+      <div><label>回程日期</label><input id="wizardEnd" class="input" type="date"></div>
+    </div>
+    <label>旅行名稱</label>
+    <input id="wizardName" class="input" placeholder="例如：釜山夏日旅行">
+    <div id="wizardStatus" class="notice">可輸入中文或英文城市名稱。</div>
+    <button class="brick primary full space-top" onclick="finishWizard()">建立旅程</button>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="./app.js?v=1.0.0"></script>
+<script>
+if ('serviceWorker' in navigator) addEventListener('load',()=>navigator.serviceWorker.register('./service-worker.js'));
+</script>
+</body>
+</html>

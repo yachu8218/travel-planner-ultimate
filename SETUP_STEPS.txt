@@ -1,0 +1,54 @@
+旅行手帳 Ultimate v1.0：重新建立 GitHub + Netlify 步驟
+
+一、建立新的 GitHub Repository
+1. 登入 https://github.com
+2. 點右上角「＋」
+3. 選 New repository
+4. Repository name 填：
+   travel-planner-ultimate
+5. 選 Public（比較容易連接 Netlify）
+6. 不要勾 Add a README、.gitignore 或 License
+7. 點 Create repository
+
+二、上傳完整包
+1. 下載 travel_planner_ultimate_v1_clean.zip
+2. 在 iPhone「檔案」App 點一下 ZIP 解壓縮
+3. 打開解壓後的資料夾
+4. 回到 GitHub 新 Repository
+5. 點 uploading an existing file
+6. 選擇資料夾裡全部 10 個檔案
+7. 確認 GitHub 上傳清單包含：
+   index.html
+   styles.css
+   app.js
+   manifest.webmanifest
+   service-worker.js
+   netlify.toml
+   icon-192.png
+   icon-512.png
+   README.md
+   SETUP_STEPS.txt
+8. 點綠色 Commit changes
+
+三、建立新的 Netlify Project
+1. 登入 https://app.netlify.com
+2. 選 Add new project
+3. 選 Import an existing project
+4. 選 GitHub
+5. 選 travel-planner-ultimate
+6. Branch 選 main
+7. Build command 留空
+8. Publish directory 填英文句點：
+   .
+9. 點 Deploy
+
+四、確認成功
+1. Netlify Deploy 狀態應顯示 Published
+2. 打開產生的 .netlify.app 網址
+3. 首次開啟應出現目的地與日期設定精靈
+4. 若仍顯示舊畫面，這代表打開的是舊 Netlify 網址；請使用新 Project 的網址
+
+五、加入 iPhone 主畫面
+1. 用 Safari 打開新網址
+2. 點分享
+3. 選加入主畫面
