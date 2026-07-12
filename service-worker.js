@@ -1,4 +1,4 @@
-const CACHE_NAME='travel-planner-ultimate-v1.0.0';
+const CACHE_NAME='travel-planner-ultimate-v1.1.0';
 const CORE=[
   './',
   './index.html',

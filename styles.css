@@ -165,3 +165,20 @@ html,body{
 }
 .tag,.eyebrow{letter-spacing:.12em}
 a{color:#376f78;font-weight:800}
+
+
+/* v1.1 可愛復古單色手帳風 */
+:root{--p:#8f9b87;--p2:#a7988b;--yellow:#d4b36f;--pink:#b98588;--ink:#3f4645;--bg1:#e9e1d2;--bg2:#f6efe2;--card:#fbf7ed;--shadow:#3f4645}
+*{font-family:"Zen Maru Gothic","Klee One","Noto Sans TC",sans-serif}
+h1,h2,h3,.title,.amount,.time-block,.brick,.day-btn b{font-family:"Klee One","Zen Maru Gothic","Noto Sans TC",sans-serif;font-weight:600}
+.app{background:#f2eadc!important}
+.hero{background:#b98588!important;color:#fff!important}
+.summary-card{background:#c6968f!important;color:#fff!important}
+.day-btn.active{background:#9aa38d!important;color:#fff!important}
+.brick.primary{background:#899982!important}.brick.yellow{background:#d1b477!important}.brick.pink{background:#b98588!important}.brick.dark{background:#58615e!important}.brick.mint{background:#91aaa0!important}
+.input,.card,.phrase-card,.modal,.wizard-card,.fx-output{background:#fbf7ed!important}
+.theme-option{background:var(--p)!important}
+.hero,.summary-card,.day-btn.active,.brick,.theme-option{background-image:none!important}
+.fx-direction-row{display:grid;grid-template-columns:1fr 58px;gap:10px;align-items:center;margin-bottom:12px}.fx-swap{font-size:24px;padding:8px}.fx-converter{display:grid;grid-template-columns:1fr 32px 1fr;gap:8px;align-items:end}.fx-converter label{margin-top:0}.fx-arrow{text-align:center;font-size:25px;font-weight:900;padding-bottom:14px}.fx-output{min-height:54px;border:3px solid var(--ink);border-radius:8px;box-shadow:4px 4px 0 var(--ink);padding:12px;font-size:18px;font-weight:900;color:#9d6572;overflow-wrap:anywhere}
+.suggestions button{font-family:"Zen Maru Gothic","Noto Sans TC",sans-serif}
+@media(max-width:360px){.fx-converter{grid-template-columns:1fr}.fx-arrow{transform:rotate(90deg);padding:0}.fx-direction-row{grid-template-columns:1fr 52px}}

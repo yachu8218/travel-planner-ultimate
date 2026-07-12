@@ -1,12 +1,12 @@
 
-const STORAGE_KEY='travelPlannerProV11';
+const STORAGE_KEY='travelPlannerUltimateV1';
 const themes={
- cream:{name:'奶油手帳',v:['#a9ddd2','#c9bce9','#f5dfa0','#f6bea8','#f8f1e6','#fffaf1']},
- rose:{name:'乾燥玫瑰',v:['#d8a5b3','#e6c1ca','#f3d6a4','#d7b7d8','#f8ecec','#fff8f1']},
- forest:{name:'奶油森林',v:['#9fc4aa','#c6d8b7','#efd89a','#d6a5a5','#edf3e9','#fff7e9']},
- sky:{name:'晴空手帳',v:['#9acddb','#b7d7eb','#f2dc9e','#e6b1bd','#edf7f8','#fff9ed']},
- lavender:{name:'薰衣草紙膠帶',v:['#b9aadf','#d7cbed','#f1dea3','#e4b2c5','#f3eff9','#fff9ee']},
- cocoa:{name:'可可文具',v:['#b9957b','#d8c1aa','#ecd49a','#c99da7','#f1e8df','#fff8ed']}
+ cream:{name:'奶油古董',v:['#9fafa0','#c7b7a3','#d8bc78','#c98f91','#eee6d8','#faf5e9']},
+ rose:{name:'復古玫瑰',v:['#b98287','#c8a4a1','#d8bd80','#a9818b','#efe1df','#f8eee6']},
+ forest:{name:'森林手帳',v:['#839681','#a9aa8d','#d0b36e','#ae7f76','#e3e8dc','#f6efe1']},
+ sky:{name:'霧藍手帳',v:['#78969b','#a8b6b4','#d7bc79','#b48687','#e2e9e7','#f5eee2']},
+ lavender:{name:'灰紫信紙',v:['#9186a0','#b6a9b2','#d0b777','#af858e','#e9e2e9','#f7efe3']},
+ cocoa:{name:'可可文具',v:['#8c715f','#b09a82','#cfaf6c','#a47676','#e8ded2','#f7efe3']}
 };
 const destinationRules=[
  {re:/south korea|republic of korea|korea|busan|seoul|incheon|jeju|daegu|釜山|首爾|仁川|濟州|大邱|韓國|南韓/i,cc:'KR',cur:'KRW',lang:'ko',locale:'ko-KR',lname:'韓文'},
@@ -62,7 +62,7 @@ const flightPresets={
  'LJ751':{airline:'真航空',from:'金海國際機場（PUS）',to:'桃園國際機場 第一航廈（TPE）',depart:'22:00',arrive:'23:40',fromGeo:{name:'金海國際機場',address:'대한민국 부산광역시 강서구 공항진입로 108',lat:35.17953,lon:128.93822},toGeo:{name:'桃園國際機場 第一航廈',address:'台灣桃園市大園區航站南路17之1號',lat:25.08167,lon:121.23791}}
 };
 let state=loadState();
-let isShareMode=false,activePhraseCat='全部',map,mapMarkers=[],userMarker,fxRate=0,suggestTimer=null,suggestionCache={};
+let isShareMode=false,activePhraseCat='全部',map,mapMarkers=[],userMarker,fxRate=0,fxDirection='localToTwd',suggestTimer=null,suggestionCache={};
 
 function defaultState(){
  return {
@@ -82,11 +82,24 @@ function applyTheme(k){state.theme=k;let v=themes[k]?.v||themes.cream.v,st=docum
 function selectedDay(){return state.days.find(d=>d.id===state.selectedDay)||state.days[0]}
 function dateLabel(d){return d?new Date(d+'T00:00:00').toLocaleDateString('zh-TW',{month:'numeric',day:'numeric',weekday:'short'}):''}
 function longDate(d){return d?new Date(d+'T00:00:00').toLocaleDateString('zh-TW',{year:'numeric',month:'long',day:'numeric',weekday:'long'}):''}
-function daysRange(a,b){let out=[],d=new Date(a+'T00:00:00'),e=new Date(b+'T00:00:00');while(d<=e){out.push(d.toISOString().slice(0,10));d.setDate(d.getDate()+1)}return out}
+function localDateString(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
+function daysRange(a,b){let out=[],d=new Date(a+'T00:00:00'),e=new Date(b+'T00:00:00');while(d<=e){out.push(localDateString(d));d.setDate(d.getDate()+1)}return out}
+function normalizeTripDates(){
+ if(!state.start||!state.end)return;
+ let expected=daysRange(state.start,state.end),current=Array.isArray(state.days)?state.days:[];
+ if(expected.length===current.length&&expected.every((date,i)=>current[i]?.date===date))return;
+ let oldSelectedIndex=Math.max(0,current.findIndex(d=>d.id===state.selectedDay));
+ state.days=expected.map((date,i)=>{
+  let exact=current.find(d=>d.date===date),base=exact||current[i]||{};
+  return {...base,id:base.id||uid()+i,title:base.title||`Day ${i+1}`,date,items:Array.isArray(base.items)?base.items:[]}
+ });
+ state.selectedDay=state.days[Math.min(oldSelectedIndex,state.days.length-1)]?.id||state.days[0]?.id||null;
+ saveState()
+}
 function enforceDestination(){let r=destinationRules.find(x=>x.re.test(`${state.destination} ${state.countryCode}`));if(r)Object.assign(state,{countryCode:r.cc,currency:r.cur,lang:r.lang,locale:r.locale,langName:r.lname});if(state.countryCode==='KR')Object.assign(state,{currency:'KRW',lang:'ko',locale:'ko-KR',langName:'韓文'})}
 function switchTab(id){document.querySelectorAll('.screen').forEach(x=>x.classList.remove('active'));$(id).classList.add('active');document.querySelectorAll('.bottom-nav button').forEach(x=>x.classList.toggle('active',x.dataset.tab===id));if(id==='map')setTimeout(()=>{initMap();plotSelectedDay()},100);if(id==='money')fetchRate()}
 function renderAll(){
- enforceDestination();applyTheme(state.theme);
+ normalizeTripDates();enforceDestination();applyTheme(state.theme);
  $('heroTitle').textContent=state.tripName||'旅行積木';
  $('heroSub').textContent=state.setup?`${state.destination}・${state.start}～${state.end}・${state.currency}・${state.langName}`:'把每一段旅程，拼成最可愛的回憶。';
  document.querySelectorAll('.owner-only').forEach(x=>x.classList.toggle('hidden',isShareMode));
@@ -172,31 +185,54 @@ async function nominatimSearch(q,country=''){
 async function photonSearch(q){
  let r=await fetch('https://photon.komoot.io/api/?limit=8&lang=zh&q='+encodeURIComponent(q));if(!r.ok)throw 0;let j=await r.json();return (j.features||[]).map(f=>({name:f.properties.name||f.properties.street||q,display_name:[f.properties.name,f.properties.street,f.properties.city,f.properties.state,f.properties.country].filter(Boolean).join(', '),lat:f.geometry.coordinates[1],lon:f.geometry.coordinates[0]}))
 }
+async function arcgisSearch(q){
+ let params=new URLSearchParams({SingleLine:q,f:'json',outFields:'Match_addr,PlaceName,Type',maxLocations:'10',forStorage:'false'});
+ let r=await fetch('https://geocode-api.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates?'+params.toString());if(!r.ok)throw 0;
+ let j=await r.json();return (j.candidates||[]).filter(x=>x.score>=55).map(x=>({name:x.attributes?.PlaceName||x.address||q,display_name:x.attributes?.Match_addr||x.address,lat:x.location?.y,lon:x.location?.x,source:'ArcGIS'}))
+}
+function placeQueryVariants(q){
+ let variants=[q],dest=state.destination||'';
+ if(dest)variants.push(`${q}, ${dest}`);
+ if(state.countryCode==='KR'){
+  variants.push(`${q}, 부산광역시, 대한민국`);
+  variants.push(`${q}, Busan, South Korea`);
+  if(!/부산|대한민국|korea|busan/i.test(q))variants.push(`대한민국 부산광역시 ${q}`);
+ }
+ return [...new Set(variants)]
+}
 async function fetchSuggestions(id,q){
- let box=$(id+'Suggestions');if(!box)return;box.classList.add('show');box.innerHTML='<button>搜尋中…</button>';
+ let box=$(id+'Suggestions');if(!box)return;box.classList.add('show');box.innerHTML='<button>正在搜尋多個地圖資料庫…</button>';
  try{
-  let presets=presetMatches(q,id),country=searchCountryHint(q,id),queries=[q];
-  if(state.destination&&!/高鐵|機捷|桃園機場/i.test(q))queries.push(`${q}, ${state.destination}`);
-  let list=[];
-  try{
-   let api=await fetch(`/api/places-search?q=${encodeURIComponent(q)}&destination=${encodeURIComponent(state.destination||'')}`);
-   if(api.ok){let body=await api.json();list.push(...(body.results||[]))}
-  }catch{}
-  for(const query of queries){try{let a=await nominatimSearch(query,country);list.push(...a)}catch{}if(list.length>=6)break}
-  if(list.length<3){try{list.push(...await photonSearch(`${q} ${country==='tw'?'Taiwan':country==='kr'?'South Korea':state.destination||''}`))}catch{}}
-  let seen=new Set();list=[...presets,...list].filter(x=>{let k=`${x.lat},${x.lon}`;if(seen.has(k))return false;seen.add(k);return true}).slice(0,10);
-  box._items=list;box.innerHTML=list.length?list.map((x,n)=>`<button type="button" onclick="chooseSuggestion('${id}',${n})"><b>${esc(x.name||x.display_name.split(',')[0])}</b><small>${esc(x.display_name||x.address||'')} ${x.source?`<span class=\"source-badge\">${esc(x.source)}</span>`:''}</small></button>`).join(''):`<button type="button" onclick="useTypedPlace('${id}')">找不到結果，點此使用目前輸入文字並稍後定位</button>`
+  let presets=presetMatches(q,id),country=searchCountryHint(q,id),queries=placeQueryVariants(q),list=[];
+  for(const query of queries){
+   try{list.push(...await arcgisSearch(query))}catch{}
+   try{list.push(...await nominatimSearch(query,country))}catch{}
+   if(list.length>=12)break
+  }
+  if(list.length<5){for(const query of queries.slice(0,2)){try{list.push(...await photonSearch(query))}catch{}}}
+  let seen=new Set();list=[...presets,...list].filter(x=>{
+   let lat=Number(x.lat),lon=Number(x.lon);if(!Number.isFinite(lat)||!Number.isFinite(lon))return false;
+   if(country==='kr'&&(lat<33||lat>39||lon<124||lon>132))return false;
+   if(country==='tw'&&(lat<21||lat>26.5||lon<119||lon>123))return false;
+   let k=`${lat.toFixed(5)},${lon.toFixed(5)}`;if(seen.has(k))return false;seen.add(k);return true
+  }).slice(0,12);
+  box._items=list;
+  box.innerHTML=list.length?list.map((x,n)=>`<button type="button" onclick="chooseSuggestion('${id}',${n})"><b>${esc(x.name||x.display_name?.split(',')[0]||q)}</b><small>${esc(x.display_name||x.address||'')} ${x.source?`<span class="source-badge">${esc(x.source)}</span>`:''}</small></button>`).join(''):`<button type="button" onclick="useTypedPlace('${id}')">仍找不到結果：保留文字，並可用 Google／Naver 地圖確認</button><button type="button" onclick="openExternalPlaceSearch('google','${encodeURIComponent(q)}')">用 Google Maps 搜尋</button>${state.countryCode==='KR'?`<button type="button" onclick="openExternalPlaceSearch('naver','${encodeURIComponent(q)}')">用 Naver Map 搜尋</button>`:''}`
  }catch{box.innerHTML=`<button type="button" onclick="useTypedPlace('${id}')">搜尋服務暫時無法使用，點此保留目前輸入文字</button>`}
 }
+function openExternalPlaceSearch(provider,q){q=decodeURIComponent(q);let full=`${q} ${state.destination||''}`.trim();window.open(provider==='naver'?`https://map.naver.com/p/search/${encodeURIComponent(full)}`:`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(full)}`,'_blank')}
 function useTypedPlace(id){let name=$(id).value.trim();if(!name)return;let o={name,address:name,lat:null,lon:null};suggestionCache[id]=o;hideSuggestions(id);if(id==='mainPlace'){$('chosenAddress').textContent='📍 '+name;$('chosenAddress').classList.remove('hidden')}toast('已保留文字，儲存後會再嘗試定位')}
 function chooseSuggestion(id,n){let box=$(id+'Suggestions'),x=box._items?.[n];if(!x)return;let o={name:x.name||x.display_name?.split(',')[0]||x.address,address:x.display_name||x.address||x.name,lat:+x.lat,lon:+x.lon};$(id).value=o.name;suggestionCache[id]=o;hideSuggestions(id);if(id==='mainPlace'){$('chosenAddress').textContent='📍 '+o.address;$('chosenAddress').classList.remove('hidden')}}
 function hideSuggestions(id){$(id+'Suggestions')?.classList.remove('show')}
 document.addEventListener('click',e=>{if(!e.target.closest('.suggest-wrap'))document.querySelectorAll('.suggestions').forEach(x=>x.classList.remove('show'))});
 async function geocode(q){
  let preset=presetMatches(q,'mainPlace')[0];if(preset)return{lat:+preset.lat,lon:+preset.lon,address:preset.address};
- let country=searchCountryHint(q,'mainPlace'),queries=[q];if(state.destination)queries.push(`${q}, ${state.destination}`);
- for(const query of queries){try{let a=await nominatimSearch(query,country);if(a?.[0])return{lat:+a[0].lat,lon:+a[0].lon,address:a[0].display_name}}catch{}}
- try{let a=await photonSearch(`${q} ${country==='tw'?'Taiwan':country==='kr'?'South Korea':state.destination||''}`);if(a?.[0])return{lat:+a[0].lat,lon:+a[0].lon,address:a[0].display_name}}catch{}
+ let country=searchCountryHint(q,'mainPlace');
+ for(const query of placeQueryVariants(q)){
+  try{let a=await arcgisSearch(query);if(a?.[0])return{lat:+a[0].lat,lon:+a[0].lon,address:a[0].display_name}}catch{}
+  try{let a=await nominatimSearch(query,country);if(a?.[0])return{lat:+a[0].lat,lon:+a[0].lon,address:a[0].display_name}}catch{}
+ }
+ try{let a=await photonSearch(`${q} ${country==='tw'?'Taiwan':country==='kr'?'Busan South Korea':state.destination||''}`);if(a?.[0])return{lat:+a[0].lat,lon:+a[0].lon,address:a[0].display_name}}catch{}
  return null
 }
 async function ensureCoords(i){if(i.lat&&i.lon)return{lat:+i.lat,lon:+i.lon};let g=await geocode(i.address||i.place);if(g){Object.assign(i,{lat:g.lat,lon:g.lon,address:i.address||g.address});saveState();return g}return null}
@@ -210,7 +246,7 @@ async function plotSelectedDay(){initMap();mapMarkers.forEach(m=>map.removeLayer
 function locateMe(){initMap();navigator.geolocation.getCurrentPosition(p=>{let ll=[p.coords.latitude,p.coords.longitude];if(userMarker)map.removeLayer(userMarker);userMarker=L.circleMarker(ll,{radius:9,color:'#2477ff',fillColor:'#64a7ff',fillOpacity:.9}).addTo(map).bindPopup('目前位置');map.setView(ll,15)},()=>toast('請允許位置權限'))}
 function navigateTo(q){window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(decodeURIComponent(q))}`,'_blank')}
 function openNaverMap(q){window.open(`https://map.naver.com/p/search/${encodeURIComponent(decodeURIComponent(q))}`,'_blank')}
-function renderMoney(){let total=state.expenses.reduce((s,e)=>s+Number(e.amount||0),0);$('moneySummary').innerHTML=`<div class="small" style="color:#fff">旅程總支出</div><div class="amount">${state.currency} ${total.toLocaleString()}</div><div>${state.people.length} 位旅伴・${state.expenses.length} 筆消費</div>`;$('fxCurrency').value=state.currency;$('peopleChips').innerHTML=state.people.map(p=>`<span class="chip">${esc(p.name)}${!isShareMode&&state.people.length>1?`<button onclick="removePerson(${p.id})">×</button>`:''}</span>`).join('');$('expenses').innerHTML=isShareMode&&state.sharePrefs.hideMoney?'<div class="card lego small">分帳明細已由分享者隱藏。</div>':state.expenses.map(e=>`<div class="card lego between"><div><b>${esc(e.title)}</b><div class="small">${esc(personName(e.payerId))} 先付款・${e.sharedBy.length} 人分攤</div></div><b>${state.currency} ${Number(e.amount).toLocaleString()}</b></div>`).join('');renderSettlements()}
+function renderMoney(){let total=state.expenses.reduce((sum,e)=>sum+Number(e.amount||0),0);$('moneySummary').innerHTML=`<div class="small" style="color:#fff">旅程總支出</div><div class="amount">${state.currency} ${total.toLocaleString()}</div><div>${state.people.length} 位旅伴・${state.expenses.length} 筆消費</div>`;$('fxDirection').value=fxDirection;$('fxFromLabel').textContent=fxDirection==='localToTwd'?state.currency:'TWD';$('fxToLabel').textContent=fxDirection==='localToTwd'?'TWD':state.currency;$('peopleChips').innerHTML=state.people.map(p=>`<span class="chip">${esc(p.name)}${!isShareMode&&state.people.length>1?`<button onclick="removePerson(${p.id})">×</button>`:''}</span>`).join('');$('expenses').innerHTML=isShareMode&&state.sharePrefs.hideMoney?'<div class="card lego small">分帳明細已由分享者隱藏。</div>':state.expenses.map(e=>`<div class="card lego between"><div><b>${esc(e.title)}</b><div class="small">${esc(personName(e.payerId))} 先付款・${e.sharedBy.length} 人分攤</div></div><b>${state.currency} ${Number(e.amount).toLocaleString()}</b></div>`).join('');convertFx();renderSettlements()}
 function personName(id){return state.people.find(p=>p.id===id)?.name||'未知'}
 function addPerson(){let n=prompt('旅伴名稱');if(n?.trim()){state.people.push({id:uid(),name:n.trim()});renderAll()}}
 function removePerson(id){if(state.people.length<=1)return;if(confirm('刪除此旅伴？')){state.people=state.people.filter(x=>x.id!==id);state.expenses=state.expenses.filter(e=>e.payerId!==id).map(e=>({...e,sharedBy:e.sharedBy.filter(x=>x!==id)}));renderAll()}}
@@ -233,7 +269,10 @@ async function fetchRate(show){
  let c=state.rateCache[state.currency];if(c){fxRate=c.rate;$('fxNote').textContent='目前離線，使用上次儲存的參考匯率';convertFx()}else{$('fxNote').textContent='暫時無法取得匯率，請確認網路後再按更新';fxRate=0;convertFx()}
 }
 function scheduleFxAutoUpdate(){let c=state.rateCache[state.currency],stale=!c?.checkedAt||Date.now()-c.checkedAt>6*60*60*1000;if(stale)fetchRate(false);clearInterval(window.__fxTimer);window.__fxTimer=setInterval(()=>fetchRate(false),6*60*60*1000)}
-function convertFx(){$('fxResult').textContent='約 NT$ '+Math.round((+$('fxAmount').value||0)*fxRate).toLocaleString()}
+function setFxDirection(v){fxDirection=v;renderMoney()}
+function swapFxDirection(){fxDirection=fxDirection==='localToTwd'?'twdToLocal':'localToTwd';renderMoney()}
+function formatFx(n,currency){if(!Number.isFinite(n))return'0';let digits=currency==='KRW'?0:2;return n.toLocaleString('zh-TW',{maximumFractionDigits:digits,minimumFractionDigits:digits===2?2:0})}
+function convertFx(){let amount=+$('fxAmount').value||0,result=0,to='TWD';if(fxDirection==='localToTwd'){result=amount*fxRate;to='TWD'}else{result=fxRate?amount/fxRate:0;to=state.currency}$('fxFromLabel').textContent=fxDirection==='localToTwd'?state.currency:'TWD';$('fxToLabel').textContent=to;$('fxResult').textContent=`約 ${to} ${formatFx(result,to)}`}
 async function translateText(t,from,to,provider='auto'){
  let key=`${provider}|${from}|${to}|${t}`;if(state.translations[key])return state.translations[key];
  if(provider==='google'||provider==='papago'){
@@ -287,7 +326,7 @@ function exitShareMode(){location.hash='';location.reload()}
 function exportBackup(){let blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`${state.tripName||'travel'}-backup.json`;a.click();URL.revokeObjectURL(a.href)}
 function importBackup(e){let f=e.target.files?.[0];if(!f)return;let r=new FileReader();r.onload=()=>{try{state=Object.assign(defaultState(),JSON.parse(r.result));renderAll();toast('備份已匯入')}catch{toast('備份檔格式錯誤')}};r.readAsText(f)}
 function init(){
- loadShareMode();applyTheme(state.theme);renderAll();
+ loadShareMode();normalizeTripDates();applyTheme(state.theme);renderAll();
  if(!state.setup&&!isShareMode)openWizard();
  if(state.setup){fetchRate();scheduleFxAutoUpdate();refreshProviderStatus()}
 }

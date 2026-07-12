@@ -10,17 +10,20 @@
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="apple-touch-icon" href="./icon-192.png">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <link rel="stylesheet" href="./styles.css?v=1.0.0">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Klee+One:wght@400;600&family=Zen+Maru+Gothic:wght@400;500;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./styles.css?v=1.1.0">
   <title>旅行手帳 Travel Planner Ultimate</title>
 </head>
 <body>
 <div id="app" class="app">
   <header class="hero">
     <div class="hero-studs"><i></i><i></i><i></i><i></i><i></i></div>
-    <div class="eyebrow">TRAVEL PLANNER ULTIMATE · v1.0</div>
+    <div class="eyebrow">TRAVEL PLANNER ULTIMATE · v1.1</div>
     <h1 id="heroTitle">旅行手帳</h1>
     <p id="heroSub">把旅程收進一本溫柔、好用的旅行手帳。</p>
-    <div class="release-badge">STABLE 1.0</div><div class="hero-character">🧳</div>
+    <div class="release-badge">STABLE 1.1</div><div class="hero-character">🧳</div>
   </header>
 
   <div id="shareBanner" class="share-banner hidden">
@@ -84,11 +87,18 @@
       <div id="moneySummary" class="summary-card"></div>
       <div class="card lego">
         <div class="between"><h3>💱 匯率換算</h3><button class="brick white" onclick="fetchRate(true)">更新</button></div>
-        <div class="grid2">
-          <input id="fxAmount" class="input" type="number" value="10000" oninput="convertFx()">
-          <input id="fxCurrency" class="input" disabled>
+        <div class="fx-direction-row">
+          <select id="fxDirection" class="input" onchange="setFxDirection(this.value)">
+            <option value="localToTwd">當地幣 → 台幣</option>
+            <option value="twdToLocal">台幣 → 當地幣</option>
+          </select>
+          <button class="brick yellow fx-swap" onclick="swapFxDirection()" aria-label="交換換算方向">⇄</button>
         </div>
-        <div id="fxResult" class="big-result">NT$ 0</div>
+        <div class="fx-converter">
+          <div><label id="fxFromLabel">KRW</label><input id="fxAmount" class="input" type="number" inputmode="decimal" value="10000" oninput="convertFx()"></div>
+          <div class="fx-arrow">→</div>
+          <div><label id="fxToLabel">TWD</label><div id="fxResult" class="fx-output">0</div></div>
+        </div>
         <div id="fxNote" class="small"></div>
       </div>
       <div class="card lego owner-only">
@@ -206,7 +216,7 @@
 <div id="toast" class="toast"></div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="./app.js?v=1.0.0"></script>
+<script src="./app.js?v=1.1.0"></script>
 <script>
 if ('serviceWorker' in navigator) addEventListener('load',()=>navigator.serviceWorker.register('./service-worker.js'));
 </script>

@@ -1,0 +1,8 @@
+Travel Planner Ultimate v1.1 更新內容
+
+1. 修正日期因 UTC 時區而少一天，並自動校正既有行程日期。
+2. 地點搜尋加入 ArcGIS、OpenStreetMap、Photon 多來源，韓國地址會嘗試韓文／英文／釜山完整查詢。
+3. 匯率支援「當地幣→台幣」與「台幣→當地幣」雙向切換。
+4. 字體改為較可愛的圓潤手帳字體；色彩改為復古、單色、無漸層。
+
+上傳方式：將本資料夾所有檔案上傳到原 travel-planner-ultimate Repository，覆蓋同名檔案後 Commit。

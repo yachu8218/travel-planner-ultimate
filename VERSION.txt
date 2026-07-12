@@ -1,5 +1,3 @@
 Travel Planner Ultimate
-Version: 1.0.0 Stable
-Structure: Flat static PWA
-Netlify Functions: Disabled
-Recommended deployment: GitHub main branch → Netlify
+Version: 1.1.0 Stable
+Fixes: local dates, multi-source places, bidirectional FX, vintage solid-color UI
