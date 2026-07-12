@@ -20,7 +20,7 @@
 <div id="app" class="app">
   <header class="hero">
     <div class="hero-studs"><i></i><i></i><i></i><i></i><i></i></div>
-    <div class="eyebrow">TRAVEL PLANNER ULTIMATE · v1.2</div>
+    <div class="eyebrow">TRAVEL PLANNER ULTIMATE · v1.3</div>
     <h1 id="heroTitle">旅行手帳</h1>
     <p id="heroSub">把旅程收進一本溫柔、好用的旅行手帳。</p>
     <div class="release-badge">STABLE 1.1</div><div class="hero-character">🧳</div>
@@ -158,22 +158,25 @@
         <h3>🎨 積木配色</h3><div id="themeGrid" class="theme-grid"></div>
       </div>
       <div class="card journal-card owner-only">
-        <div class="washi-tape">API TOOLBOX</div>
-        <h3>✈️ 航空資料 API 中心</h3>
-        <p class="small">App 會依設定好的金鑰，自動依序嘗試可用供應商；金鑰請放在 Netlify 環境變數，不會顯示在網頁裡。</p>
+        <div class="washi-tape">SERVICE STATUS</div>
+        <h3>✈️ 航班功能狀態</h3>
+        <p class="small">目前版本不使用 Netlify Functions，因此不會影響網站部署。需要金鑰的即時航空資料屬於選用功能。</p>
         <div id="flightProviderStatus" class="provider-status"></div>
-        <button class="brick white full space-top" onclick="refreshProviderStatus()">重新檢查 API 狀態</button>
       </div>
       <div class="card journal-card owner-only">
-        <div class="washi-tape">MAP & TRANSLATION</div>
-        <h3>🗺️ Google／Naver 服務狀態</h3>
+        <div class="washi-tape">MAP STATUS</div>
+        <h3>🗺️ 地圖與導航狀態</h3>
+        <p class="small">App 內免費定位、Google／Naver 外部搜尋及導航可直接使用。</p>
         <div id="serviceProviderStatus" class="provider-status"></div>
       </div>
       <div class="card journal-card owner-only">
-        <h3>資料備份</h3>
-        <div class="grid2">
-          <button class="brick white" onclick="exportBackup()">匯出備份</button>
-          <label class="brick white file-label">匯入備份<input type="file" accept=".json" onchange="importBackup(event)"></label>
+        <div class="washi-tape">SHARE & BACKUP</div>
+        <h3>行程分享與資料備份</h3>
+        <button class="brick primary full" onclick="exportItineraryPDF()">匯出行程 PDF</button>
+        <p class="small">iPhone 會開啟列印版，點「列印／儲存 PDF」，再從預覽分享或儲存到檔案。</p>
+        <div class="grid2 space-top">
+          <button class="brick white" onclick="exportBackup()">匯出 JSON 備份</button>
+          <label class="brick white file-label">匯入 JSON 備份<input type="file" accept=".json" onchange="importBackup(event)"></label>
         </div>
       </div>
     </section>

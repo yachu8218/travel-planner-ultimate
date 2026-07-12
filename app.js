@@ -441,14 +441,24 @@ const quantityCounters={
 function renderQuantityTable(){let el=$('quantityTable');if(!el)return;let heads=Object.keys(quantityCounters);el.innerHTML=`<div class="quantity-scroll"><table class="quantity-table"><tr><th>數量</th>${heads.map(h=>`<th>${h}</th>`).join('')}</tr>${Array.from({length:10},(_,i)=>`<tr><th>${i+1}</th>${heads.map(h=>`<td><button class="quantity-speak" onclick="speakQuantity('${encodeURIComponent(quantityCounters[h][i])}')">${quantityCounters[h][i]} 🔊</button></td>`).join('')}</tr>`).join('')}</table></div>`}
 function toggleQuantityTable(){$('quantityTable').classList.toggle('hidden')}
 function speakQuantity(t){let u=new SpeechSynthesisUtterance(decodeURIComponent(t));u.lang='ko-KR';u.rate=.62;u.pitch=1;speechSynthesis.cancel();speechSynthesis.speak(u)}
-async function refreshProviderStatus(){let f=$('flightProviderStatus'),s=$('serviceProviderStatus');if(!f||!s)return;f.innerHTML=s.innerHTML='<div class="small">正在檢查…</div>';try{let r=await fetch('/api/provider-status'),j=await r.json();f.innerHTML=(j.flight||[]).map(x=>`<div class="provider-item"><span><b>${esc(x.name)}</b><br><small>${esc(x.use||'')}</small></span><span class="${x.configured?'status-ok':'status-off'}">${x.configured?'已設定':'待設定'}</span></div>`).join('');s.innerHTML=(j.services||[]).map(x=>`<div class="provider-item"><span><b>${esc(x.name)}</b><br><small>${esc(x.use||'')}</small></span><span class="${x.configured?'status-ok':'status-off'}">${x.configured?'已設定':'待設定'}</span></div>`).join('')}catch{f.innerHTML=s.innerHTML='<div class="api-note small">Netlify Functions 尚未部署或暫時無法連線。</div>'}}
+async function refreshProviderStatus(){
+ let f=$('flightProviderStatus'),s=$('serviceProviderStatus');
+ if(!f||!s)return;
+ f.innerHTML=`
+  <div class="provider-item"><span><b>內建航班資料</b><br><small>已支援常用航班自動帶入與外部查詢。</small></span><span class="status-ok">可使用</span></div>
+  <div class="provider-item"><span><b>即時航空 API</b><br><small>尚未啟用付費或需金鑰的即時供應商。</small></span><span class="status-info">選用</span></div>`;
+ s.innerHTML=`
+  <div class="provider-item"><span><b>App 內地圖定位</b><br><small>OpenStreetMap、ArcGIS 與手動地圖選點可使用。</small></span><span class="status-ok">可使用</span></div>
+  <div class="provider-item"><span><b>Google／Naver 外部搜尋</b><br><small>按鈕會開啟官方地圖搜尋與導航。</small></span><span class="status-ok">可使用</span></div>
+  <div class="provider-item"><span><b>Google／Naver 官方店家 API</b><br><small>尚未設定金鑰，不影響目前地圖與導航功能。</small></span><span class="status-info">選用</span></div>`;
+}
 function renderThemes(){
  $('themeGrid').innerHTML=Object.entries(themes).map(([k,t])=>`
  <button class="theme-option ${state.theme===k?'active':''}" style="--swatch:${t.v[0]};--swatch2:${t.v[2]}" onclick="applyTheme('${k}')">
   <span class="theme-dots"><i></i><i></i></span>${t.name}
  </button>`).join('');
 }
-function renderSettings(){$('settingsSummary').innerHTML=`旅行：${esc(state.tripName)}<br>目的地：${esc(state.destination)}<br>日期：${esc(state.start)} ～ ${esc(state.end)}<br>當地幣別：${state.currency}<br>當地語言：${state.langName}（${state.locale}）`;$('languageBadge').textContent=`${state.langName}・${state.currency}`;updateTranslatePlaceholder()}
+function renderSettings(){refreshProviderStatus();$('settingsSummary').innerHTML=`旅行：${esc(state.tripName)}<br>目的地：${esc(state.destination)}<br>日期：${esc(state.start)} ～ ${esc(state.end)}<br>當地幣別：${state.currency}<br>當地語言：${state.langName}（${state.locale}）`;$('languageBadge').textContent=`${state.langName}・${state.currency}`;updateTranslatePlaceholder()}
 function openWizard(edit=false){$('wizard').classList.add('show');$('wizardDestination').value=state.destination;$('wizardStart').value=state.start;$('wizardEnd').value=state.end;$('wizardName').value=state.tripName}
 async function finishWizard(){let dest=$('wizardDestination').value.trim(),start=$('wizardStart').value,end=$('wizardEnd').value,name=$('wizardName').value.trim();if(!dest||!start||!end||end<start)return $('wizardStatus').textContent='請輸入完整目的地與正確日期。';$('wizardStatus').textContent='正在偵測國家、語言與幣別…';try{let rule=destinationRules.find(x=>x.re.test(dest)),g=await geocode(dest);if(!g)throw 0;Object.assign(state,{setup:true,tripName:name||`${dest}旅行`,destination:dest,start,end,center:[g.lat,g.lon]});if(rule)Object.assign(state,{countryCode:rule.cc,currency:rule.cur,lang:rule.lang,locale:rule.locale,langName:rule.lname});let old=new Map(state.days.map(d=>[d.date,d]));state.days=daysRange(start,end).map((date,i)=>old.get(date)||{id:uid()+i,title:`Day ${i+1}`,date,items:[]});state.selectedDay=state.days[0]?.id;$('wizard').classList.remove('show');renderAll();fetchRate();toast('旅行已建立')}catch{$('wizardStatus').textContent='找不到目的地，請輸入較完整的城市名稱。'}}
 function showModal(html){$('modal').innerHTML=html;$('modalBackdrop').classList.add('show')}
@@ -462,6 +472,82 @@ async function shareNative(){let url=$('shareUrl').value;try{if(navigator.share)
 async function copyShareUrl(){await navigator.clipboard.writeText($('shareUrl').value);toast('分享連結已複製')}
 function loadShareMode(){let m=location.hash.match(/^#share=(.+)$/);if(!m)return false;try{state=decodeShare(m[1]);isShareMode=true;return true}catch{return false}}
 function exitShareMode(){location.hash='';location.reload()}
+
+function formatPdfDate(date){
+ try{return new Intl.DateTimeFormat('zh-TW',{year:'numeric',month:'long',day:'numeric',weekday:'short'}).format(new Date(date+'T12:00:00'))}
+ catch{return date}
+}
+function pdfSafe(v){return esc(String(v??''))}
+function exportItineraryPDF(){
+ const win=window.open('','_blank');
+ if(!win)return toast('請允許開啟新視窗後再試一次');
+ const days=(state.days||[]).map((day,dayIndex)=>{
+  const items=(day.items||[]).map((item,itemIndex)=>{
+   const transport=item.type==='transport'&&item.transport?`
+    <div class="pdf-transport">
+      <b>${pdfSafe(item.transport)}</b>
+      ${item.flightNo?`・航班 ${pdfSafe(item.flightNo)}`:''}
+      ${item.departPlace||item.arrivePlace?`<br>${pdfSafe(item.departTime||'')} ${pdfSafe(item.departPlace||'')} → ${pdfSafe(item.arriveTime||'')} ${pdfSafe(item.arrivePlace||'')}`:''}
+    </div>`:'';
+   const notes=[item.publicNote,item.note].filter(Boolean).join('／');
+   return `<div class="pdf-item">
+    <div class="pdf-time">${pdfSafe(item.start||'--:--')}<br><span>～</span><br>${pdfSafe(item.end||'--:--')}</div>
+    <div class="pdf-content">
+      <div class="pdf-type">${pdfSafe(typeNames[item.type]||item.type||'行程')}</div>
+      <h3>${pdfSafe(item.place||'未命名行程')}</h3>
+      ${item.address?`<div class="pdf-address">📍 ${pdfSafe(item.address)}</div>`:''}
+      ${transport}
+      ${notes?`<div class="pdf-note">備註：${pdfSafe(notes)}</div>`:''}
+    </div>
+   </div>`;
+  }).join('')||'<div class="pdf-empty">尚未安排當日行程</div>';
+  return `<section class="pdf-day">
+   <div class="pdf-day-head"><span>DAY ${dayIndex+1}</span><div><b>${pdfSafe(day.title||`Day ${dayIndex+1}`)}</b><br>${pdfSafe(formatPdfDate(day.date))}</div></div>
+   ${items}
+  </section>`;
+ }).join('');
+ const checklist=(state.checklist||[]).filter(x=>x.checked).map(x=>`<li>${pdfSafe(x.text||x.name||x.title||'')}</li>`).join('');
+ const html=`<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8">
+ <meta name="viewport" content="width=device-width,initial-scale=1">
+ <title>${pdfSafe(state.tripName||'旅行行程')}</title>
+ <style>
+  @import url('https://fonts.googleapis.com/css2?family=LXGW+WenKai+TC:wght@700&family=Gowun+Dodum&display=swap');
+  *{box-sizing:border-box}
+  body{margin:0;background:#f3ecdf;color:#3f403b;font-family:"LXGW WenKai TC","Gowun Dodum",cursive;font-weight:700}
+  .pdf-wrap{max-width:860px;margin:auto;padding:32px}
+  .pdf-cover{border:4px solid #3f403b;background:#d9a7a1;padding:30px;box-shadow:8px 8px 0 #3f403b;margin-bottom:30px}
+  .pdf-cover h1{font-size:34px;margin:0 0 12px}.pdf-meta{font-size:18px}
+  .pdf-day{break-inside:avoid-page;margin:0 0 26px;border:3px solid #3f403b;background:#fffaf0;box-shadow:6px 6px 0 #3f403b}
+  .pdf-day-head{display:flex;gap:18px;align-items:center;padding:16px;border-bottom:3px solid #3f403b;background:#c7b99a}
+  .pdf-day-head>span{background:#3f403b;color:#fffaf0;padding:8px 12px}
+  .pdf-item{display:grid;grid-template-columns:110px 1fr;gap:18px;padding:18px;border-bottom:2px dashed #9a8f78}
+  .pdf-item:last-child{border-bottom:0}.pdf-time{text-align:center;font-size:20px;border:3px solid #3f403b;background:#e5eee8;padding:12px}
+  .pdf-time span{font-size:14px}.pdf-content h3{font-size:24px;margin:4px 0 10px}.pdf-type{color:#8d6f72}.pdf-address,.pdf-note,.pdf-transport{margin-top:9px;line-height:1.6}
+  .pdf-transport{padding:10px;border:2px solid #3f403b;background:#f3dfac}.pdf-note{background:#eee5d3;padding:8px}
+  .pdf-empty{padding:20px}.pdf-check{border:3px solid #3f403b;background:#fffaf0;padding:18px;margin-top:25px}
+  .pdf-actions{position:sticky;top:0;display:flex;gap:10px;justify-content:center;padding:12px;background:#3f403b}
+  .pdf-actions button{font:inherit;font-weight:700;border:2px solid #fffaf0;padding:10px 18px;background:#d9a7a1;color:#3f403b}
+  @page{size:A4;margin:12mm}
+  @media print{
+   body{background:#fff}.pdf-wrap{max-width:none;padding:0}.pdf-actions{display:none}
+   .pdf-cover,.pdf-day{box-shadow:none}
+  }
+  @media(max-width:600px){.pdf-wrap{padding:14px}.pdf-item{grid-template-columns:82px 1fr}.pdf-cover h1{font-size:27px}}
+ </style></head><body>
+ <div class="pdf-actions"><button onclick="window.print()">列印／儲存 PDF</button><button onclick="window.close()">關閉</button></div>
+ <main class="pdf-wrap">
+  <section class="pdf-cover">
+   <div>TRAVEL PLANNER ULTIMATE</div>
+   <h1>${pdfSafe(state.tripName||'我的旅行')}</h1>
+   <div class="pdf-meta">${pdfSafe(state.destination)}・${pdfSafe(state.start)} ～ ${pdfSafe(state.end)}・${pdfSafe(state.currency)}</div>
+  </section>
+  ${days}
+  ${checklist?`<section class="pdf-check"><h2>已完成的旅行準備</h2><ul>${checklist}</ul></section>`:''}
+ </main></body></html>`;
+ win.document.open();win.document.write(html);win.document.close();
+ setTimeout(()=>win.focus(),300);
+}
+
 function exportBackup(){let blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`${state.tripName||'travel'}-backup.json`;a.click();URL.revokeObjectURL(a.href)}
 function importBackup(e){let f=e.target.files?.[0];if(!f)return;let r=new FileReader();r.onload=()=>{try{state=Object.assign(defaultState(),JSON.parse(r.result));renderAll();toast('備份已匯入')}catch{toast('備份檔格式錯誤')}};r.readAsText(f)}
 function init(){

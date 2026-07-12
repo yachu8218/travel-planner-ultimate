@@ -224,3 +224,32 @@ body{
 .suggestions{border-color:var(--ink)!important;background:var(--card)!important}
 .suggestions button{background:var(--card)!important;color:var(--ink)!important}
 @media(max-width:360px){.place-tools{grid-template-columns:1fr}}
+
+
+/* =========================================================
+   v1.3：統一粗體手寫字、清楚服務狀態、PDF 匯出
+   ========================================================= */
+*,html,body,button,input,textarea,select,
+h1,h2,h3,h4,h5,h6,p,span,div,label,small,
+.title,.amount,.time-block,.brick,.day-btn,.tag,.eyebrow,.foreign,.chip{
+  font-family:"LXGW WenKai TC","Gowun Dodum","DFKai-SB","BiauKai",cursive!important;
+  font-weight:700!important;
+  font-synthesis:weight!important;
+}
+input::placeholder,textarea::placeholder{
+  font-family:"LXGW WenKai TC","Gowun Dodum","DFKai-SB","BiauKai",cursive!important;
+  font-weight:700!important;
+  opacity:.62;
+}
+.provider-item{
+  display:flex;justify-content:space-between;align-items:center;gap:12px;
+  padding:12px;margin-top:9px;border:2px solid var(--ink);
+  background:var(--card);box-shadow:3px 3px 0 var(--ink);
+}
+.provider-item small{display:inline-block;margin-top:3px;line-height:1.45}
+.status-ok,.status-info{
+  flex:0 0 auto;padding:5px 8px;border:2px solid var(--ink);
+  border-radius:999px;white-space:nowrap;
+}
+.status-ok{background:var(--p2);color:var(--ink)}
+.status-info{background:var(--yellow);color:var(--ink)}
