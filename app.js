@@ -65,7 +65,7 @@ const flightPresets={
  'LJ751':{airline:'真航空',from:'金海國際機場（PUS）',to:'桃園國際機場 第一航廈（TPE）',depart:'22:00',arrive:'23:40',fromGeo:{name:'金海國際機場',address:'대한민국 부산광역시 강서구 공항진입로 108',lat:35.17953,lon:128.93822},toGeo:{name:'桃園國際機場 第一航廈',address:'台灣桃園市大園區航站南路17之1號',lat:25.08167,lon:121.23791}}
 };
 let portfolio=loadPortfolio();
-let state=portfolio.trips.find(t=>t.tripId===portfolio.activeTripId)||portfolio.trips[0]||defaultState();
+let state=portfolio.trips.find(t=>String(t.tripId)===String(portfolio.activeTripId))||portfolio.trips[0]||defaultState();
 portfolio.activeTripId=state.tripId;
 let isShareMode=false,activePhraseCat='全部',map,mapMarkers=[],userMarker,fxRate=0,fxDirection='localToTwd',suggestTimer=null,suggestionCache={},pickerMaps={},pickerMarkers={},pickerSelections={},wizardCreateMode=false;
 
@@ -79,7 +79,7 @@ function defaultState(){
 }
 function normalizeTripObject(raw){
  let base=defaultState(),trip=Object.assign(base,raw||{});
- trip.tripId=trip.tripId||uid();
+ trip.tripId=String(trip.tripId||newTripId());
  trip.days=Array.isArray(trip.days)?trip.days:[];
  trip.checklist=Array.isArray(trip.checklist)?trip.checklist:base.checklist;
  trip.people=Array.isArray(trip.people)&&trip.people.length?trip.people:base.people;
@@ -91,7 +91,8 @@ function loadPortfolio(){
   let saved=JSON.parse(localStorage.getItem(PORTFOLIO_KEY)||'null');
   if(saved&&Array.isArray(saved.trips)&&saved.trips.length){
    saved.trips=saved.trips.map(normalizeTripObject);
-   saved.activeTripId=saved.activeTripId||saved.trips[0].tripId;
+   saved.activeTripId=String(saved.activeTripId||saved.trips[0].tripId);
+   if(!saved.trips.some(t=>String(t.tripId)===saved.activeTripId))saved.activeTripId=saved.trips[0].tripId;
    return saved;
   }
  }catch{}
@@ -102,7 +103,8 @@ function loadPortfolio(){
 }
 function savePortfolio(){
  if(isShareMode)return;
- let idx=portfolio.trips.findIndex(t=>t.tripId===state.tripId);
+ state.tripId=String(state.tripId||newTripId());
+ let idx=portfolio.trips.findIndex(t=>String(t.tripId)===state.tripId);
  if(idx>=0)portfolio.trips[idx]=state;else portfolio.trips.push(state);
  portfolio.activeTripId=state.tripId;
  localStorage.setItem(PORTFOLIO_KEY,JSON.stringify(portfolio));
@@ -113,6 +115,10 @@ const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 function toast(t){$('toast').textContent=t;$('toast').style.display='block';setTimeout(()=>$('toast').style.display='none',1800)}
 function uid(){return Date.now()+Math.floor(Math.random()*10000)}
+function newTripId(){
+ if(globalThis.crypto?.randomUUID)return 'trip-'+crypto.randomUUID();
+ return 'trip-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,9);
+}
 function applyTheme(k){
  state.theme=k;
  let v=themes[k]?.v||themes.cream.v,st=document.documentElement.style;
@@ -155,7 +161,18 @@ function migrateKnownFlightData(){
  if(changed)saveState();
 }
 
-function enforceDestination(){let r=destinationRules.find(x=>x.re.test(`${state.destination} ${state.countryCode}`));if(r)Object.assign(state,{countryCode:r.cc,currency:r.cur,lang:r.lang,locale:r.locale,langName:r.lname});if(state.countryCode==='KR')Object.assign(state,{currency:'KRW',lang:'ko',locale:'ko-KR',langName:'韓文'})}
+function destinationProfile(text,countryCode=''){
+ let source=`${text||''} ${countryCode||''}`;
+ let rule=destinationRules.find(x=>x.re.test(source));
+ if(rule)return rule;
+ if(countryCode==='TW')return{cc:'TW',cur:'TWD',lang:'zh-TW',locale:'zh-TW',lname:'繁體中文'};
+ return null;
+}
+function enforceDestination(){
+ let r=destinationProfile(state.destination,state.countryCode);
+ if(r)Object.assign(state,{countryCode:r.cc,currency:r.cur,lang:r.lang,locale:r.locale,langName:r.lname});
+ state.rateCache=state.rateCache&&typeof state.rateCache==='object'?state.rateCache:{};
+}
 function switchTab(id){document.querySelectorAll('.screen').forEach(x=>x.classList.remove('active'));$(id).classList.add('active');document.querySelectorAll('.bottom-nav button').forEach(x=>x.classList.toggle('active',x.dataset.tab===id));if(id==='map')setTimeout(()=>{initMap();plotSelectedDay()},100);if(id==='money')fetchRate()}
 function renderAll(){
  normalizeTripDates();migrateKnownFlightData();enforceDestination();applyTheme(state.theme);
@@ -181,9 +198,9 @@ function renderTripPortfolio(){
   return;
  }
  box.innerHTML=portfolio.trips.map(trip=>{
-  let active=trip.tripId===state.tripId;
+  let tripId=String(trip.tripId),active=tripId===String(state.tripId);
   return `<article class="trip-library-card ${active?'active':''}">
-   <button class="trip-library-main" onclick="switchTrip('${trip.tripId}')">
+   <button class="trip-library-main" onclick="switchTrip('${tripId}')">
     <span class="trip-library-icon">${trip.countryCode==='JP'?'🗾':trip.countryCode==='KR'?'🧳':'✈️'}</span>
     <span>
      <small>${active?'目前開啟・':''}${esc(tripStatusLabel(trip))}</small>
@@ -192,35 +209,62 @@ function renderTripPortfolio(){
     </span>
    </button>
    <div class="trip-library-actions">
-    <button class="brick white" onclick="switchTrip('${trip.tripId}')">開啟</button>
-    <button class="brick white" onclick="editTripFromLibrary('${trip.tripId}')">編輯</button>
-    ${portfolio.trips.length>1?`<button class="brick white" onclick="deleteTrip('${trip.tripId}')">刪除</button>`:''}
+    <button class="brick white" onclick="switchTrip('${tripId}')">開啟</button>
+    <button class="brick white" onclick="editTripFromLibrary('${tripId}')">編輯</button>
+    ${portfolio.trips.length>1?`<button class="brick white" onclick="deleteTrip('${tripId}')">刪除</button>`:''}
    </div>
   </article>`;
  }).join('')||'<div class="card">尚未建立旅行。</div>';
 }
-function switchTrip(id){
- if(isShareMode)return;
- savePortfolio();
- let target=portfolio.trips.find(t=>t.tripId===id);if(!target)return;
- state=target;portfolio.activeTripId=id;
- map=null;mapMarkers=[];userMarker=null;fxRate=0;
- savePortfolio();applyTheme(state.theme);renderAll();switchTab('home');fetchRate();
- toast(`已切換至「${state.tripName||state.destination}」`);
+function resetTripRuntime(){
+ map=null;mapMarkers=[];userMarker=null;
+ fxRate=0;fxDirection='localToTwd';
+ clearInterval(window.__fxTimer);
 }
-function editTripFromLibrary(id){
- if(id!==state.tripId)switchTrip(id);
+async function switchTrip(id,options={}){
+ if(isShareMode)return false;
+ const wanted=String(id);
+ savePortfolio();
+ const target=portfolio.trips.find(t=>String(t.tripId)===wanted);
+ if(!target){toast('找不到這個旅行，請重新整理後再試');return false}
+ state=normalizeTripObject(target);
+ portfolio.activeTripId=state.tripId;
+ resetTripRuntime();
+ enforceDestination();
+ savePortfolio();
+ applyTheme(state.theme||'cream');
+ renderAll();
+ if(!options.keepTab)switchTab('home');
+ await fetchRate(false);
+ scheduleFxAutoUpdate();
+ toast(`已切換至「${state.tripName||state.destination}」`);
+ return true;
+}
+async function editTripFromLibrary(id){
+ const ok=String(id)===String(state.tripId)||await switchTrip(id,{keepTab:true});
+ if(!ok)return;
  openWizard(true,false);
 }
 function deleteTrip(id){
- if(isShareMode||portfolio.trips.length<=1)return;
- let trip=portfolio.trips.find(t=>t.tripId===id);
- if(!confirm(`確定刪除「${trip?.tripName||'這個旅行'}」？此動作無法復原。`))return;
- portfolio.trips=portfolio.trips.filter(t=>t.tripId!==id);
- if(state.tripId===id){
-  state=portfolio.trips[0];portfolio.activeTripId=state.tripId;
+ if(isShareMode)return;
+ const wanted=String(id);
+ if(portfolio.trips.length<=1){toast('至少需要保留一個旅行');return}
+ const trip=portfolio.trips.find(t=>String(t.tripId)===wanted);
+ if(!trip){toast('找不到要刪除的旅行');return}
+ if(!confirm(`確定刪除「${trip.tripName||'這個旅行'}」？此動作無法復原。`))return;
+ portfolio.trips=portfolio.trips.filter(t=>String(t.tripId)!==wanted);
+ if(String(state.tripId)===wanted){
+  state=normalizeTripObject(portfolio.trips[0]);
+  portfolio.activeTripId=state.tripId;
+  resetTripRuntime();
+  enforceDestination();
  }
- savePortfolio();renderAll();toast('旅行已刪除');
+ savePortfolio();
+ applyTheme(state.theme||'cream');
+ renderAll();
+ fetchRate(false);
+ scheduleFxAutoUpdate();
+ toast('旅行已刪除');
 }
 function createNewTrip(){openWizard(false,true)}
 
@@ -481,19 +525,24 @@ function openExpenseEditor(){showModal(`<h3>新增消費</h3><label>項目</labe
 function saveExpense(){let o={id:uid(),title:$('expenseTitle').value.trim(),amount:+$('expenseAmount').value,payerId:+$('expensePayer').value,sharedBy:[...document.querySelectorAll('[name=expenseShared]:checked')].map(x=>+x.value)};if(!o.title||o.amount<=0||!o.sharedBy.length)return toast('請完整填寫');state.expenses.push(o);closeModal();renderAll()}
 function renderSettlements(){if(isShareMode&&state.sharePrefs.hideMoney){$('settlements').innerHTML='<div class="small">分享者已隱藏分帳內容。</div>';return}let bal={};state.people.forEach(p=>bal[p.id]=0);state.expenses.forEach(e=>{let valid=e.sharedBy.filter(id=>bal[id]!==undefined);if(!valid.length||bal[e.payerId]===undefined)return;let share=e.amount/valid.length;bal[e.payerId]+=e.amount;valid.forEach(id=>bal[id]-=share)});let c=Object.entries(bal).filter(x=>x[1]>.5).map(x=>({id:+x[0],a:x[1]})),d=Object.entries(bal).filter(x=>x[1]<-.5).map(x=>({id:+x[0],a:-x[1]})),out=[],i=0,j=0;while(i<d.length&&j<c.length){let a=Math.min(d[i].a,c[j].a);out.push([personName(d[i].id),personName(c[j].id),a]);d[i].a-=a;c[j].a-=a;if(d[i].a<.5)i++;if(c[j].a<.5)j++}$('settlements').innerHTML=out.length?out.map(x=>`<div class="between check-row"><span>${esc(x[0])} 給 ${esc(x[1])}</span><b>${state.currency} ${Math.round(x[2]).toLocaleString()}</b></div>`).join(''):'<div class="small">目前帳目平衡。</div>'}
 async function fetchRate(show){
- if(state.currency==='TWD'){fxRate=1;$('fxNote').textContent='目的地使用台幣';convertFx();return}
- $('fxNote').textContent='正在取得最新參考匯率…';
+ const requestedCurrency=state.currency;
+ const note=$('fxNote');
+ if(requestedCurrency==='TWD'){fxRate=1;if(note)note.textContent='目的地使用台幣';convertFx();return}
+ if(note)note.textContent=`正在取得 ${requestedCurrency} 最新參考匯率…`;
  try{
   let j=await(await fetch(`https://open.er-api.com/v6/latest/${state.currency}`)).json();
   if(j.result!=='success'||!j.rates?.TWD)throw 0;
-  fxRate=j.rates.TWD;state.rateCache[state.currency]={rate:fxRate,date:j.time_last_update_utc||new Date().toISOString(),checkedAt:Date.now()};
-  $('fxNote').textContent=`1 ${state.currency} ≈ ${fxRate.toFixed(state.currency==='KRW'?4:2)} TWD（今日自動更新）`;convertFx();saveState();if(show)toast('匯率已更新');return
+  if(state.currency!==requestedCurrency)return;
+  fxRate=j.rates.TWD;state.rateCache[requestedCurrency]={rate:fxRate,date:j.time_last_update_utc||new Date().toISOString(),checkedAt:Date.now()};
+  if(note)note.textContent=`1 ${requestedCurrency} ≈ ${fxRate.toFixed(requestedCurrency==='KRW'?4:2)} TWD（今日自動更新）`;convertFx();saveState();if(show)toast('匯率已更新');return
  }catch{}
  try{
   let j=await(await fetch(`https://api.frankfurter.dev/v1/latest?base=${state.currency}&symbols=TWD`)).json();if(!j.rates?.TWD)throw 0;
-  fxRate=j.rates.TWD;state.rateCache[state.currency]={rate:fxRate,date:j.date,checkedAt:Date.now()};$('fxNote').textContent=`1 ${state.currency} ≈ ${fxRate.toFixed(4)} TWD（${j.date}）`;convertFx();saveState();if(show)toast('匯率已更新');return
+  if(state.currency!==requestedCurrency)return;
+  fxRate=j.rates.TWD;state.rateCache[requestedCurrency]={rate:fxRate,date:j.date,checkedAt:Date.now()};if(note)note.textContent=`1 ${requestedCurrency} ≈ ${fxRate.toFixed(4)} TWD（${j.date}）`;convertFx();saveState();if(show)toast('匯率已更新');return
  }catch{}
- let c=state.rateCache[state.currency];if(c){fxRate=c.rate;$('fxNote').textContent='目前離線，使用上次儲存的參考匯率';convertFx()}else{$('fxNote').textContent='暫時無法取得匯率，請確認網路後再按更新';fxRate=0;convertFx()}
+ if(state.currency!==requestedCurrency)return;
+ let c=state.rateCache[requestedCurrency];if(c){fxRate=c.rate;if(note)note.textContent=`目前離線，使用 ${requestedCurrency} 上次儲存的參考匯率`;convertFx()}else{if(note)note.textContent=`暫時無法取得 ${requestedCurrency} 匯率，請確認網路後再按更新`;fxRate=0;convertFx()}
 }
 function scheduleFxAutoUpdate(){let c=state.rateCache[state.currency],stale=!c?.checkedAt||Date.now()-c.checkedAt>6*60*60*1000;if(stale)fetchRate(false);clearInterval(window.__fxTimer);window.__fxTimer=setInterval(()=>fetchRate(false),6*60*60*1000)}
 function setFxDirection(v){fxDirection=v;renderMoney()}
@@ -567,22 +616,25 @@ async function finishWizard(){
  if(!dest||!start||!end||end<start)return $('wizardStatus').textContent='請輸入完整目的地與正確日期。';
  $('wizardStatus').textContent='正在偵測國家、語言與幣別…';
  try{
-  let rule=destinationRules.find(x=>x.re.test(dest)),g=await geocode(dest);if(!g)throw 0;
+  let rule=destinationProfile(dest,''),g=await geocode(dest);if(!g)throw 0;
   if(wizardCreateMode){
    savePortfolio();
    state=defaultState();
-   state.tripId=uid();
+   state.tripId=newTripId();
    portfolio.trips.push(state);
    portfolio.activeTripId=state.tripId;
   }
   Object.assign(state,{setup:true,tripName:name||`${dest}旅行`,destination:dest,start,end,center:[g.lat,g.lon]});
   if(rule)Object.assign(state,{countryCode:rule.cc,currency:rule.cur,lang:rule.lang,locale:rule.locale,langName:rule.lname});
+  state.rateCache=state.rateCache&&typeof state.rateCache==='object'?state.rateCache:{};
+  fxRate=0;fxDirection='localToTwd';clearInterval(window.__fxTimer);
   let old=new Map((state.days||[]).map(d=>[d.date,d]));
   state.days=daysRange(start,end).map((date,i)=>old.get(date)||{id:uid()+i,title:`Day ${i+1}`,date,items:[]});
   state.selectedDay=state.days[0]?.id;
   wizardCreateMode=false;
   $('wizard').classList.remove('show');
-  savePortfolio();renderAll();switchTab('home');fetchRate();
+  savePortfolio();renderAll();switchTab('home');
+  await fetchRate(false);scheduleFxAutoUpdate();
   toast('旅行已建立');
  }catch{$('wizardStatus').textContent='找不到目的地，請輸入較完整的城市名稱。'}
 }
@@ -756,7 +808,25 @@ function exportBackup(){
  let blob=new Blob([JSON.stringify({version:15,portfolio},null,2)],{type:'application/json'}),a=document.createElement('a');
  a.href=URL.createObjectURL(blob);a.download='travel-planner-all-trips-backup.json';a.click();URL.revokeObjectURL(a.href)
 }
-function importBackup(e){let f=e.target.files?.[0];if(!f)return;let r=new FileReader();r.onload=()=>{try{state=Object.assign(defaultState(),JSON.parse(r.result));renderAll();toast('備份已匯入')}catch{toast('備份檔格式錯誤')}};r.readAsText(f)}
+function importBackup(e){
+ let f=e.target.files?.[0];if(!f)return;
+ let r=new FileReader();
+ r.onload=()=>{
+  try{
+   let data=JSON.parse(r.result);
+   if(data?.portfolio?.trips?.length){
+    portfolio={activeTripId:String(data.portfolio.activeTripId||data.portfolio.trips[0].tripId),trips:data.portfolio.trips.map(normalizeTripObject)};
+    state=portfolio.trips.find(t=>String(t.tripId)===portfolio.activeTripId)||portfolio.trips[0];
+   }else{
+    state=normalizeTripObject(data);
+    portfolio={activeTripId:state.tripId,trips:[state]};
+   }
+   resetTripRuntime();enforceDestination();savePortfolio();applyTheme(state.theme||'cream');renderAll();fetchRate(false);scheduleFxAutoUpdate();
+   toast('備份已匯入');
+  }catch{toast('備份檔格式錯誤')}
+ };
+ r.readAsText(f)
+}
 async function init(){
  await loadShareMode();
  normalizeTripDates();applyTheme(state.theme);renderAll();

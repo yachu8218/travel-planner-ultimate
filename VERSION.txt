@@ -1,9 +1,9 @@
 Travel Planner Ultimate
-Version: 1.5.0
-Changes:
-- Multiple independent trips stored on one device
-- Home trip library: create, switch, edit and delete trips
-- Existing single trip automatically migrated into the trip library
-- Share links use compressed query payloads
-- Shared links open the exact selected trip in read-only mode
-- Backup now includes all trips
+Version: 1.6.0
+
+Fixes:
+- Trip IDs normalized as strings
+- Every trip card can switch, edit and delete correctly
+- Currency and language refresh per active trip
+- Exchange-rate requests cannot overwrite another trip
+- Multi-trip backup import supported
