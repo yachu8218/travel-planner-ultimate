@@ -6,7 +6,8 @@ const themes={
  forest:{name:'森林郵局',v:['#758875','#a5aa89','#c7aa66','#9a7166','#dde4d8','#f2ebdc','#374239','#fbf7eb']},
  sky:{name:'霧藍車票',v:['#6f8c91','#9eb0ae','#d0b471','#a47c7d','#dce6e4','#f2ecdf','#354347','#fbf7ed']},
  lavender:{name:'灰紫信紙',v:['#887c96','#afa2ad','#c8ad6e','#9d7781','#e4dce5','#f5ede1','#413b48','#fcf7ef']},
- cocoa:{name:'可可文具店',v:['#7d6657','#a68f78','#c6a461','#956b6b','#e2d6c8','#f3eadb','#44372f','#fbf4e9']}
+ cocoa:{name:'可可文具店',v:['#7d6657','#a68f78','#c6a461','#956b6b','#e2d6c8','#f3eadb','#44372f','#fbf4e9']},
+ summer:{name:'夏日陽光',v:['#5faeb8','#8fd3c7','#f3cf67','#e98b6d','#dff3ee','#fff4cf','#34484a','#fffdf4']}
 };
 const destinationRules=[
  {re:/south korea|republic of korea|korea|busan|seoul|incheon|jeju|daegu|釜山|首爾|仁川|濟州|大邱|韓國|南韓/i,cc:'KR',cur:'KRW',lang:'ko',locale:'ko-KR',lname:'韓文'},
@@ -479,8 +480,6 @@ function formatPdfDate(date){
 }
 function pdfSafe(v){return esc(String(v??''))}
 function exportItineraryPDF(){
- const win=window.open('','_blank');
- if(!win)return toast('請允許開啟新視窗後再試一次');
  const days=(state.days||[]).map((day,dayIndex)=>{
   const items=(day.items||[]).map((item,itemIndex)=>{
    const transport=item.type==='transport'&&item.transport?`
@@ -526,15 +525,17 @@ function exportItineraryPDF(){
   .pdf-transport{padding:10px;border:2px solid #3f403b;background:#f3dfac}.pdf-note{background:#eee5d3;padding:8px}
   .pdf-empty{padding:20px}.pdf-check{border:3px solid #3f403b;background:#fffaf0;padding:18px;margin-top:25px}
   .pdf-actions{position:sticky;top:0;display:flex;gap:10px;justify-content:center;padding:12px;background:#3f403b}
-  .pdf-actions button{font:inherit;font-weight:700;border:2px solid #fffaf0;padding:10px 18px;background:#d9a7a1;color:#3f403b}
+  .pdf-actions button{font:inherit;font-weight:700;border:2px solid #fffaf0;padding:10px 18px;background:#f3cf67;color:#3f403b}
+  .pdf-help{padding:12px;text-align:center;background:#dff3ee;border-bottom:2px solid #3f403b}
   @page{size:A4;margin:12mm}
   @media print{
-   body{background:#fff}.pdf-wrap{max-width:none;padding:0}.pdf-actions{display:none}
+   body{background:#fff}.pdf-wrap{max-width:none;padding:0}.pdf-actions,.pdf-help{display:none}
    .pdf-cover,.pdf-day{box-shadow:none}
   }
   @media(max-width:600px){.pdf-wrap{padding:14px}.pdf-item{grid-template-columns:82px 1fr}.pdf-cover h1{font-size:27px}}
  </style></head><body>
  <div class="pdf-actions"><button onclick="window.print()">列印／儲存 PDF</button><button onclick="window.close()">關閉</button></div>
+ <div class="pdf-help">iPhone：點「列印／儲存 PDF」，再於預覽畫面用兩指放大，最後點分享。</div>
  <main class="pdf-wrap">
   <section class="pdf-cover">
    <div>TRAVEL PLANNER ULTIMATE</div>
@@ -544,8 +545,20 @@ function exportItineraryPDF(){
   ${days}
   ${checklist?`<section class="pdf-check"><h2>已完成的旅行準備</h2><ul>${checklist}</ul></section>`:''}
  </main></body></html>`;
- win.document.open();win.document.write(html);win.document.close();
- setTimeout(()=>win.focus(),300);
+ const blob=new Blob([html],{type:'text/html;charset=utf-8'});
+ const url=URL.createObjectURL(blob);
+ let win=window.open(url,'_blank');
+ if(!win){
+  const a=document.createElement('a');
+  a.href=url;
+  a.target='_blank';
+  a.rel='noopener';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+ }
+ setTimeout(()=>URL.revokeObjectURL(url),60000);
+ toast('PDF 預覽已開啟');
 }
 
 function exportBackup(){let blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`${state.tripName||'travel'}-backup.json`;a.click();URL.revokeObjectURL(a.href)}

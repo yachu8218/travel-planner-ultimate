@@ -1,16 +1,8 @@
-# Travel Planner Ultimate v1.3
+# Travel Planner Ultimate v1.4
 
-## 更新內容
+## 修正
+- PDF 匯出不再停在 about:blank。
+- 新增「夏日陽光」配色。
 
-- 航班與地圖狀態不再顯示「無法連線」，改為說明目前可用與選用功能。
-- 字體改成一致的粗體手寫風。
-- 設定頁新增「匯出行程 PDF」。
-
-## iPhone 儲存 PDF
-
-1. 設定 → 匯出行程 PDF。
-2. 新頁面點「列印／儲存 PDF」。
-3. 在列印預覽頁用兩指向外放大預覽。
-4. 點分享按鈕，可傳 LINE 或儲存到「檔案」。
-
-更新時將全部檔案上傳至原 GitHub Repository，覆蓋同名檔案。
+## iPhone PDF
+設定 → 匯出行程 PDF → 列印／儲存 PDF → 在預覽畫面兩指放大 → 分享或儲存到檔案。

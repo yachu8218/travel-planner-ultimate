@@ -1,7 +1,5 @@
 Travel Planner Ultimate
-Version: 1.3.0
+Version: 1.4.0
 Changes:
-- Replaced misleading Netlify Functions connection error with clear local service status
-- Unified Chinese/English/Korean handwritten font styling and weight
-- Added printable itinerary export for saving and sharing as PDF
-- No Netlify Functions required
+- PDF preview uses Blob URL instead of about:blank/document.write
+- Added Summer Sunshine theme

@@ -253,3 +253,18 @@ input::placeholder,textarea::placeholder{
 }
 .status-ok{background:var(--p2);color:var(--ink)}
 .status-info{background:var(--yellow);color:var(--ink)}
+
+
+/* v1.4：夏日陽光主題 */
+html[data-theme="summer"] body{
+  background-color:#dff3ee!important;
+  background-image:
+    radial-gradient(circle at 18px 18px,rgba(243,207,103,.35) 0 5px,transparent 6px),
+    repeating-linear-gradient(0deg,#fff4cf 0,#fff4cf 31px,#dff3ee 32px)!important;
+}
+html[data-theme="summer"] .hero{background:#5faeb8!important}
+html[data-theme="summer"] .summary-card{background:#e98b6d!important}
+html[data-theme="summer"] .day-btn.active{background:#8fd3c7!important;color:#34484a!important}
+html[data-theme="summer"] .brick.primary{background:#5faeb8!important}
+html[data-theme="summer"] .brick.yellow{background:#f3cf67!important}
+html[data-theme="summer"] .brick.mint{background:#8fd3c7!important}
